@@ -1,8 +1,16 @@
 <template>
-  <router-view />
+  <router-view></router-view>
 </template>
 
 <script setup>
-// KOSONGKAN BAGIAN INI
-// (atau biarkan hanya 'import { RouterView } from 'vue-router'')
+// Tidak perlu script macam-macam di sini
 </script>
+
+<style>
+/* Global style jika perlu, misalnya font */
+body {
+  font-family: 'Inter', sans-serif;
+  margin: 0;
+  padding: 0;
+}
+</style>

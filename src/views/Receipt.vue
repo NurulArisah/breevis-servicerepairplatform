@@ -88,7 +88,9 @@
           >
             Cancel Order
           </button>
-          <button class="flex-1 bg-white border border-gray-300 text-gray-700 font-bold py-3 rounded-full hover:bg-gray-50 transition-colors text-sm font-sans shadow-sm">
+          <button 
+          @click="$router.push('/receipt-details')"
+          class="flex-1 bg-white border border-gray-300 text-gray-700 font-bold py-3 rounded-full hover:bg-gray-50 transition-colors text-sm font-sans shadow-sm">
             See Details
           </button>
         </div>

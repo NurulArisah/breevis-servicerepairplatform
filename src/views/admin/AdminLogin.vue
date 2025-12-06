@@ -2,7 +2,11 @@
   <div class="w-full max-w-sm">
     
     <div class="mb-8 text-center">
-      <img src="../assets/breevis-logo.png" alt="Breevis Logo" class="h-12 w-auto inline-block">
+      <img 
+        :src="logoImage"  
+        alt="Breevis" 
+        class="h-12 w-auto inline-block"
+      >
     </div>
 
     <div class="bg-white rounded-xl shadow-xl p-8">
@@ -13,7 +17,7 @@
       
       <form @submit.prevent="handleLogin" class="space-y-5">
         
-        <div v-if="errorMessage" class="bg-red-100 text-red-700 px-4 py-3 rounded">
+        <div v-if="errorMessage" class="bg-red-100 text-red-700 px-4 py-3 rounded text-sm">
           {{ errorMessage }}
         </div>
 
@@ -74,7 +78,7 @@
         <button 
           type="submit" 
           :disabled="isLoading"
-          class="w-full bg-white text-gray-700 font-semibold py-2 px-4 border border-gray-300 rounded-lg shadow-sm hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50 disabled:bg-gray-200"
+          class="w-full bg-indigo-600 text-white font-semibold py-2 px-4 border border-transparent rounded-lg shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-indigo-400 disabled:cursor-not-allowed transition-colors"
         >
           {{ isLoading ? 'Loading...' : 'Login' }}
         </button>
@@ -86,32 +90,59 @@
 
 <script setup>
 import { ref } from 'vue';
-import { useAuthStore } from '@/stores/auth'; // Impor "Otak"
+import { useRouter } from 'vue-router'; // 1. WAJIB IMPORT INI
+import { useAuthStore } from '../../stores/auth.js';
 
-// State lokal untuk form ini saja
+import logoImage from '../../components/assets/breevis-logo.png';
+
+const router = useRouter(); // 2. WAJIB INISIALISASI ROUTER
+const authStore = useAuthStore();
+
 const username = ref('');
 const password = ref('');
 const showPassword = ref(false);
 const isLoading = ref(false);
 const errorMessage = ref(null);
 
-const authStore = useAuthStore(); // Panggil "Otak"
-
 const toggleShowPassword = () => {
   showPassword.value = !showPassword.value;
 };
 
 const handleLogin = async () => {
-  isLoading.value = true;
   errorMessage.value = null;
 
-  // Panggil fungsi 'login' dari "Otak"
-  const success = await authStore.login(username.value, password.value);
-
-  if (!success) {
-    errorMessage.value = 'Username atau Password salah.';
+  // --- DUMMY LOGIN LOGIC ---
+  if (username.value === 'admin' && password.value === '123') {
+      authStore.isLoggedIn = true;
+      // Set dummy user agar tidak error di dashboard jika menampilkan nama user
+      if(!authStore.user) authStore.user = { name: 'Admin (Dummy)', role: 'admin' };
+      
+      alert("Login Berhasil (Mode Dummy)");
+      
+      // 3. Redirect ke Dashboard
+      router.push({ name: 'AdminDashboard' });
+      return;
   }
+  // --- END DUMMY ---
 
-  isLoading.value = false;
+  // --- REAL LOGIN LOGIC ---
+  // isLoading.value = true;
+  
+  // try {
+  //   const success = await authStore.login(username.value, password.value);
+
+  //   if (success) {
+  //     console.log("Login sukses, mengarahkan ke dashboard...");
+  //     // 4. Redirect ke Dashboard jika login API sukses
+  //     router.push({ name: 'AdminDashboard' }); 
+  //   } else {
+  //     errorMessage.value = 'Username atau Password salah.';
+  //   }
+  // } catch (err) {
+  //   console.error(err);
+  //   errorMessage.value = 'Terjadi kesalahan pada sistem login.';
+  // } finally {
+  //   isLoading.value = false;
+  // }
 };
 </script>
