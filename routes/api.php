@@ -2,7 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 
-// Wajib: Impor semua Controller yang sudah dibuat
+// Import Controller
 use App\Http\Controllers\Api\LookupController;
 use App\Http\Controllers\Api\OrderController; 
 use App\Http\Controllers\Api\TransactionController;
@@ -11,18 +11,16 @@ use App\Http\Controllers\Api\TechnicianController;
 use App\Http\Controllers\Api\LogController;
 use App\Http\Controllers\Api\AuthController;
 
-
 // =========================================================================
-// 1. RUTE PUBLIC (Customer & Login Entry)
+// 1. RUTE PUBLIC (Tanpa Token)
 // =========================================================================
 
-// --- A. AUTHENTICATION (Login Endpoint) ---
+// A. AUTHENTICATION
 Route::controller(AuthController::class)->prefix('admin')->group(function () {
-    Route::post('/login', 'login'); // LOGIN ENDPOINT WAJIB PUBLIK
+    Route::post('/login', 'login'); 
 });
 
-// --- B. CUSTOMER & PUBLIC LOOKUP API ---
-// Semua rute ini tidak memerlukan otentikasi.
+// B. LOOKUP DATA (Dropdowns)
 Route::controller(LookupController::class)->prefix('lookup')->group(function () {
     Route::get('payment-methods', 'getPaymentMethods'); 
     Route::get('order-statuses', 'getOrderStatuses');
@@ -31,31 +29,34 @@ Route::controller(LookupController::class)->prefix('lookup')->group(function () 
     Route::get('device-types', 'getDeviceTypes');
     Route::get('transaction-types', 'getTransactionTypes');
     Route::get('payment-statuses', 'getPaymentStatuses');
-    Route::get('technicians', 'getTechnicians'); // Lookup Staff List
+    Route::get('technicians', 'getTechnicians'); 
 });
 
-// --- C. CUSTOMER ORDER & ACTIONS ---
+// C. CUSTOMER ACTIONS (Order & Upload)
 Route::controller(OrderController::class)->group(function () {
-    Route::post('/orders', 'store');                     // 1. Membuat Order Baru
-    Route::get('/orders/{order_code}', 'show');          // 2. Customer Tracking
-    Route::patch('orders/{id}/cancel', 'cancelOrder');   // 3. Customer/Admin Cancel
-    Route::patch('orders/{id}/confirm-payment', 'confirmPayment'); // 4. Confirm COD
-    Route::patch('orders/{id}/approve-repair', 'approveRepair'); // 5. Customer Approval
-    Route::post('orders/{id}/initiate-payment', 'initiatePayment'); // Rute ini melayani customer setelah approval/saat ingin membayar online
+    Route::post('/orders', [OrderController::class, 'store']); 
+    Route::get('/orders/{id}', [OrderController::class, 'show']);
+    Route::get('/admin/orders', [OrderController::class, 'index']); 
+    Route::patch('orders/{id}/cancel', 'cancelOrder'); 
+    Route::patch('orders/{id}/confirm-payment', 'confirmPayment'); 
+    Route::patch('orders/{id}/approve-repair', 'approveRepair'); 
+    Route::post('orders/{id}/initiate-payment', 'initiatePayment'); 
 });
 
-// --- D. CUSTOMER UPLOAD ---
+// D. PUBLIC UPLOAD
 Route::post('upload/device-photo/{device_id}', [UploadController::class, 'uploadDevicePhoto']);
 
 
 // =========================================================================
-// 2. RUTE PROTECTED (Admin Access Only)
+// 2. RUTE PROTECTED (Wajib Token Admin)
 // =========================================================================
 
-// Semua rute di dalam grup ini memerlukan Sanctum Token yang valid.
 Route::middleware(['auth:sanctum'])->prefix('admin')->group(function () {
+    
+    // A. LOG ACTIVITIES (Dashboard Log)
+    Route::get('/logs', [LogController::class, 'index']);
 
-    // A. AUTH & PROFILE MANAGEMENT
+    // B. PROFILE
     Route::controller(AuthController::class)->group(function () {
         Route::post('/logout', 'logout'); 
         Route::get('/profile', 'getProfile');
@@ -63,37 +64,32 @@ Route::middleware(['auth:sanctum'])->prefix('admin')->group(function () {
         Route::patch('/change-password', 'changePassword');
     });
 
-    // B. ORDER MANAGEMENT & CORE LOGIC
+    // C. ORDER MANAGEMENT
     Route::controller(OrderController::class)->prefix('orders')->group(function () {
-        Route::get('/', 'index');                                // Admin READ List & Summary
+        Route::get('/', 'index'); 
         Route::patch('{id}/assign-technician', 'assignTechnician');
         Route::patch('{id}/diagnose', 'updateDiagnosis');
+        Route::patch('{id}/update-status', 'updateStatus'); // Tambahan manual update status
     });
     
-    // C. STAFF MANAGEMENT
+    // D. STAFF MANAGEMENT
     Route::controller(TechnicianController::class)->prefix('technicians')->group(function () {
         Route::get('/', 'index'); 
         Route::post('/', 'store'); 
         Route::get('{technicianId}/orders', 'getAssignedOrders'); 
     });
 
-    // D. FINANCE REPORT & TRANSACTIONS (CRITICAL FIX)
+    // E. FINANCE & TRANSACTIONS (PENTING UNTUK FITUR TADI)
     Route::controller(TransactionController::class)->prefix('transactions')->group(function () {
-        Route::get('/', 'index');                           // Laporan Keuangan (READ Log)
-        Route::post('/', 'store');                          // Mencatat Transaksi Manual (CREATE Log)
-        Route::get('/{transaction_id}', 'show');            // Detail Transaksi
-        Route::patch('/{transaction_id}/confirm', 'confirmTransaction'); 
-        Route::patch('/{transaction_id}/cancel', 'cancelTransaction');
-        Route::patch('admin/transactions/{id}/cancel', 'cancelTransaction');
+        Route::get('/', 'index');                   // List Data
+        Route::post('/', 'store');                  // Create New
+        Route::get('/{transaction_id}', 'show');    // Detail
+        
+        // Route ini yang dipakai tombol Confirm/Cancel di Finance Report
+        Route::patch('/{id}/status', 'updateStatus'); 
     });
 
-    // E. ADMIN UPLOAD (Bukti TF)
+    // F. ADMIN UPLOAD
     Route::post('upload/receipt/{transaction_id}', [UploadController::class, 'uploadTransactionReceipt']);
-
-    // update status
-    Route::patch('orders/{id}/update-status', [OrderController::class, 'updateStatus']);
-
-    // F. LOG ACTIVITIES
-    Route::get('logs', [LogController::class, 'index']); // Read Audit Logs
 
 });

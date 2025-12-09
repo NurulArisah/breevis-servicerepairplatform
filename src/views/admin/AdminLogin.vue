@@ -90,15 +90,15 @@
 
 <script setup>
 import { ref } from 'vue';
-import { useRouter } from 'vue-router'; // 1. WAJIB IMPORT INI
-import { useAuthStore } from '../../stores/auth.js';
-
+import { useRouter } from 'vue-router'; 
+import { useAuthStore } from '../../stores/auth.js'; // Pastikan path ini benar
 import logoImage from '../../components/assets/breevis-logo.png';
 
-const router = useRouter(); // 2. WAJIB INISIALISASI ROUTER
+const router = useRouter(); 
 const authStore = useAuthStore();
 
-const username = ref('');
+// Ubah default value jadi kosong
+const username = ref(''); 
 const password = ref('');
 const showPassword = ref(false);
 const isLoading = ref(false);
@@ -110,39 +110,30 @@ const toggleShowPassword = () => {
 
 const handleLogin = async () => {
   errorMessage.value = null;
+  isLoading.value = true; // 1. Mulai Loading
 
-  // --- DUMMY LOGIN LOGIC ---
-  if (username.value === 'admin' && password.value === '123') {
-      authStore.isLoggedIn = true;
-      // Set dummy user agar tidak error di dashboard jika menampilkan nama user
-      if(!authStore.user) authStore.user = { name: 'Admin (Dummy)', role: 'admin' };
-      
-      alert("Login Berhasil (Mode Dummy)");
-      
-      // 3. Redirect ke Dashboard
-      router.push({ name: 'AdminDashboard' });
-      return;
+  try {
+    // 2. Panggil fungsi login di Store (kita buat di Langkah 2)
+    // NOTE: Backend biasanya butuh 'email', jadi kita kirim sebagai object
+    const success = await authStore.login({ 
+        email: username.value, // Asumsi backend butuh field 'email'
+        password: password.value 
+    });
+
+    if (success) {
+      // 3. Jika sukses, redirect ke Dashboard
+      router.push({ name: 'AdminDashboard' }); 
+    }
+  } catch (err) {
+    // 4. Tangkap Error dari Backend
+    console.error(err);
+    if (err.response && err.response.status === 401) {
+        errorMessage.value = 'Email atau Password salah!';
+    } else {
+        errorMessage.value = 'Gagal terhubung ke server.';
+    }
+  } finally {
+    isLoading.value = false; // 5. Stop Loading
   }
-  // --- END DUMMY ---
-
-  // --- REAL LOGIN LOGIC ---
-  // isLoading.value = true;
-  
-  // try {
-  //   const success = await authStore.login(username.value, password.value);
-
-  //   if (success) {
-  //     console.log("Login sukses, mengarahkan ke dashboard...");
-  //     // 4. Redirect ke Dashboard jika login API sukses
-  //     router.push({ name: 'AdminDashboard' }); 
-  //   } else {
-  //     errorMessage.value = 'Username atau Password salah.';
-  //   }
-  // } catch (err) {
-  //   console.error(err);
-  //   errorMessage.value = 'Terjadi kesalahan pada sistem login.';
-  // } finally {
-  //   isLoading.value = false;
-  // }
 };
 </script>

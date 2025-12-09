@@ -43,8 +43,8 @@ const routes = [
       { path: 'reviews', name: 'Review', component: Review },
       { path: 'about', name: 'AboutUs', component: AboutUs },
       { path: 'order', name: 'Order', component: Order },
-      { path: 'receipt', name: 'Receipt', component: Receipt },
-      { path: 'receipt-details', name: 'ReceiptDetails', component: ReceiptDetails },
+      // { path: 'receipt', name: 'Receipt', component: Receipt },
+      // { path: 'receipt-details', name: 'ReceiptDetails', component: ReceiptDetails },
       { path: 'logs', name: 'LogActivities', component: LogActivities }
     ]
   },
@@ -73,6 +73,20 @@ const routes = [
       { path: '', name: 'AdminLogin', component: AdminLogin }
     ]
   },
+
+  // 1. Halaman Receipt Utama (Tracking)
+  {
+    path: '/receipt/:id', 
+    name: 'Receipt',
+    component: Receipt 
+  },
+  
+  // 2. Halaman Receipt Details (YANG BARU DITAMBAHKAN)
+  {
+    path: '/receipt/:id/details', 
+    name: 'ReceiptDetails',
+    component: ReceiptDetails 
+  },
 ];
 
 const router = createRouter({
@@ -88,9 +102,9 @@ router.beforeEach((to, from, next) => {
     const requiresAuth = to.meta.requiresAuth;
     const requiresGuest = to.meta.requiresGuest;
 
-    if (requiresAuth && !authStore.isLoggedIn) {
+    if (requiresAuth && !authStore.token) {
       next({ name: 'AdminLogin' });
-    } else if (requiresGuest && authStore.isLoggedIn) {
+    } else if (requiresGuest && authStore.token) {
       next({ name: 'AdminDashboard' });
     } else {
       next();

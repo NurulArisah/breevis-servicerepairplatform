@@ -7,162 +7,129 @@ use Illuminate\Http\Request;
 use App\Models\Transaction;
 use App\Models\TransactionType;
 use Illuminate\Support\Facades\DB;
-use App\Models\Order; // Diperlukan untuk relasi di show/index
 
 class TransactionController extends Controller
 {
-    /**
-     * [GET] Menampilkan Laporan Keuangan (Income/Expense Log) dan Summary.
-     * Mendukung filtering berdasarkan category=income atau category=expense.
-     */
-    public function index(Request $request)
+    public function index()
     {
-        // 1. Hitung Summary Neraca (Total Income vs Total Expense)
-        $summary = $this->calculateFinancialSummary();
+        // 1. Ambil data
+        $transactions = Transaction::with(['order', 'technician', 'type'])
+                        ->latest('transaction_date')
+                        ->get();
 
-        // 2. Inisiasi Query
-        // Eager load relasi yang diperlukan untuk daftar tabel (Type, Order, Technician)
-        $query = Transaction::with(['type', 'order', 'technician']) 
-            ->orderBy('transaction_date', 'desc');
+        // 2. Format Data
+        $formattedData = $transactions->map(function($item) {
+            
+            // Logika Nama
+            $displayName = '-';
+            if ($item->order) { $displayName = $item->order->customer_name; } 
+            elseif ($item->technician) { $displayName = $item->technician->name; } 
+            elseif ($item->name) { $displayName = $item->name; }
 
-        // >>> LOGIKA FILTER CATEGORY BARU <<<
-        // Memfilter berdasarkan parameter 'category' di URL (misal: ?category=income)
-        if ($request->filled('category') && in_array($request->input('category'), ['income', 'expense'])) {
-            $query->where('transaction_category', $request->input('category'));
-        }
-        
-        // 3. Ambil data dengan pagination
-        $transactions = $query->paginate(20);
+            $categoryName = $item->type ? $item->type->transaction_type_name : ($item->category ?? $item->transaction_category);
 
+            // Logika Status (Cek beberapa kemungkinan kolom)
+            $status = $item->payment_status_id ?? $item->status ?? 'Unpaid';
+
+            return [
+                // ID Tampilan (String #TRX...)
+                'transaction_id' => '#TRX-' . str_pad($item->transaction_id, 5, '0', STR_PAD_LEFT),
+                
+                // --- KUNCI PERBAIKAN: ID ASLI (Integer) ---
+                // Kita kirim ID asli database dengan nama 'original_id'
+                'original_id' => (int) $item->transaction_id, 
+                // ------------------------------------------
+
+                'related_id' => $item->order ? $item->order->order_code : '-',
+                'name' => $displayName,
+                'category' => $categoryName, 
+                'payment_method' => $item->payment_method ?? 'Cash',
+                'amount' => $item->amount,
+                'type' => $item->transaction_category, // income / expense
+                'status' => $status,
+                'notes' => $item->notes,
+                'proof_image' => $item->transaction_image,
+                'created_at' => $item->created_at,
+                'transaction_date' => $item->transaction_date
+            ];
+        });
+
+        // 3. Return
         return response()->json([
-            'summary' => $summary,
-            'transactions' => $transactions->items(),
-            'pagination' => [
-                'total' => $transactions->total(),
-                'per_page' => $transactions->perPage(),
-                'current_page' => $transactions->currentPage(),
-                'last_page' => $transactions->lastPage(),
+            'message' => 'Data retrieved',
+            'data' => $formattedData,
+            'summary' => [
+                'income' => $transactions->where('transaction_category', 'income')->sum('amount'),
+                'expense' => $transactions->where('transaction_category', 'expense')->sum('amount'),
+                'revenue' => $transactions->where('transaction_category', 'income')->sum('amount') - $transactions->where('transaction_category', 'expense')->sum('amount')
             ]
-        ]);
-    }
-    
-    /**
-     * [INTERNAL] Menghitung Total Income, Total Expense, dan Saldo Bersih.
-     */
-    private function calculateFinancialSummary()
-    {
-        // Menggunakan DB::raw untuk mengelompokkan dan menjumlahkan berdasarkan kategori
-        $totals = Transaction::select('transaction_category')
-            ->selectRaw('SUM(amount) as total_amount')
-            ->groupBy('transaction_category')
-            ->pluck('total_amount', 'transaction_category');
-
-        $income = $totals['income'] ?? 0;
-        $expense = $totals['expense'] ?? 0; 
-        
-        return [
-            'total_income' => (float) $income,
-            'total_expense' => (float) $expense,
-            'net_balance' => (float) $income - (float) $expense
-        ];
+        ], 200);
     }
 
-
-    /**
-     * [POST] Mencatat Transaksi Manual (Misal: Pembelian Sparepart / Pengeluaran Gaji).
-     */
     public function store(Request $request)
     {
-        $SPAREPART_PURCHASE_ID = 2;
-        $SALARY_ID = 3;
-        
-        $validatedData = $request->validate([
-            'transaction_type_id' => 'required|integer|exists:transaction_type,transaction_type_id',
-            'transaction_category' => 'required|in:income,expense', 
-            'amount' => 'required|numeric|min:0.01',
-            'bank_name' => 'required_if:transaction_type_id,' . $SPAREPART_PURCHASE_ID . ',' . $SALARY_ID . '|nullable|string|max:100',
-            'account_number' => 'required_if:transaction_type_id,' . $SPAREPART_PURCHASE_ID . ',' . $SALARY_ID . '|nullable|string|max:100',
-            'notes' => 'nullable|string',
-            'transaction_date' => 'required|date',
-            'technician_id' => 'nullable|integer|exists:technicians,technician_id', 
-            'order_id' => 'nullable|integer|exists:orders,order_id', 
+        // 1. Validasi
+        $request->validate([
+            'amount' => 'required|numeric',
+            'type_name' => 'required|string', // Dikirim dari Frontend (Vue)
+            'transaction_category' => 'required|in:income,expense',
         ]);
-        
-        $transaction = Transaction::create($validatedData);
 
-        return response()->json([
-            'message' => 'Transaksi berhasil dicatat.', 
-            'transaction' => $transaction
-        ], 201);
+        try {
+            DB::beginTransaction(); // Biar aman kalau error di tengah jalan
+
+            // 2. Cari ID Tipe Transaksi berdasarkan nama string
+            // Contoh: Cari "Service Payment". Jika tidak ada, buat baru.
+            $type = TransactionType::firstOrCreate(
+                ['transaction_type_name' => $request->type_name]
+            );
+
+            // 3. Simpan Transaksi
+            $transaction = Transaction::create([
+                // Mapping ID hasil pencarian di atas
+                'transaction_type_id' => $type->transaction_type_id, 
+                
+                // Data dari input user
+                'transaction_category' => $request->transaction_category,
+                'amount' => $request->amount,
+                'notes' => $request->notes,
+                'transaction_date' => $request->transaction_date ?? now(),
+                'payment_method' => $request->payment_method ?? 'Cash',
+                
+                // Default value
+                'status' => 'Completed',
+                
+                // Kolom nullable (biarkan null karena ini input manual)
+                'order_id' => null,
+                'technician_id' => null,
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Transaction created successfully',
+                'data' => $transaction
+            ], 201);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to save transaction: ' . $e->getMessage()
+            ], 500);
+        }
     }
-
-    /**
-     * [GET] Menampilkan Detail Transaksi untuk Modal (Transaction Details).
-     */
-    public function show($transaction_id)
+    
+    // Method update status (untuk tombol Confirm/Cancel)
+    public function updateStatus(Request $request, $id)
     {
-        // Menggunakan with untuk eager load semua data bersarang yang dibutuhkan untuk modal
-        $transaction = Transaction::with([
-            'type', // Transaction Type Name
-            'order.diagnosis', // CRUCIAL: Untuk rincian biaya breakdown
-            'order.paymentMethod',
-            'order.serviceType',
-            'order.deliveryMethod',
-            'order.device' // Untuk detail perangkat
-        ])
-        ->find($transaction_id);
+        $transaction = Transaction::find($id);
+        if(!$transaction) return response()->json(['message' => 'Not found'], 404);
 
-        if (!$transaction) {
-            return response()->json(['message' => 'Transaksi tidak ditemukan.'], 404);
-        }
+        $transaction->update(['status' => $request->status]);
         
-        return response()->json($transaction);
+        return response()->json(['message' => 'Status updated']);
     }
 
-    /**
-     * [PATCH] Mengubah status transaksi menjadi "Completed/Confirmed".
-     */
-    public function confirmTransaction($transaction_id)
-    {
-        $transaction = Transaction::find($transaction_id);
-        if (!$transaction) {
-            return response()->json(['message' => 'Transaksi tidak ditemukan.'], 404);
-        }
-
-        // Asumsi: Status ID untuk "Completed" atau "Confirmed" adalah 2
-        $CONFIRMED_ID = 2; 
-
-        // Asumsi: Tabel 'transactions' memiliki kolom 'status_id' (atau sejenisnya)
-        $transaction->payment_status_id = $CONFIRMED_ID; 
-        $transaction->save();
-
-        return response()->json(['message' => 'Transaksi berhasil dikonfirmasi.'], 200);
-    }
-
-    /**
-     * [PATCH] Membatalkan Transaksi.
-     */
-    public function cancelTransaction($transaction_id)
-    {
-        // Asumsi: Status ID untuk "Cancelled" adalah 4
-        $CANCELLED_TRANSACTION_ID = 4;
-        
-        $transaction = Transaction::find($transaction_id);
-        if (!$transaction) {
-            return response()->json(['message' => 'Transaksi tidak ditemukan.'], 404);
-        }
-
-        if ($transaction->payment_status_id == $CANCELLED_TRANSACTION_ID) {
-            return response()->json(['message' => 'Transaksi ini sudah dibatalkan sebelumnya.'], 400);
-        }
-
-        if ($transaction->transaction_category === 'income' && $transaction->order_id !== null) {
-            return response()->json(['message' => 'Untuk transaksi pendapatan Order, batalkan Order secara keseluruhan.'], 400);
-        }
-
-        $transaction->payment_status_id = $CANCELLED_TRANSACTION_ID;
-        $transaction->save();
-
-        return response()->json(['message' => 'Transaksi berhasil dibatalkan.'], 200);
-    }
 }

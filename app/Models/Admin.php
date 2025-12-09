@@ -17,20 +17,19 @@ class Admin extends Authenticatable
     // --- CUSTOM PROPERTIES UNTUK SKEMA BRIVIS ---
     
     // 1. Tentukan nama tabel yang benar (WAJIB, karena bukan 'users')
-    protected $table = 'admin'; 
-    protected $primaryKey = 'id'; 
-    
+    protected $table = 'admin';
+    protected $primaryKey = 'admin_id';
     protected $keyType = 'int';
     public $incrementing = true;
-    
-    // ---------------------------------------------
-    
+
     protected $fillable = [
-        'name', 
-        'email', 
+        'name',
+        'email',
         'password',
-        'username',
+        'nickname',
+        'phone_number'
     ];
+
 
     protected $hidden = [
         'password', 
@@ -49,7 +48,7 @@ class Admin extends Authenticatable
      */
     public function orders()
     {
-        // Mencari semua Order dimana FK 'admin_id' sama dengan PK Admin ini
-        return $this->hasMany(Order::class, 'admin_id', 'id');
+        return $this->hasMany(Order::class, 'admin_id', 'admin_id');
     }
+
 }

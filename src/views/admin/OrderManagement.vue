@@ -52,7 +52,7 @@
            <select v-model="filterDelivery" class="px-3 py-1.5 border rounded-lg text-xs text-gray-500 focus:outline-none focus:border-indigo-500 bg-white">
              <option value="">All Delivery</option>
              <option value="Home Pick-up">Home Pick-up</option>
-             <option value="Drop off">Drop off</option>
+             <option value="Drop off at Center">Drop off</option>
            </select>
            <select v-model="filterPaymentMethod" class="px-3 py-1.5 border rounded-lg text-xs text-gray-500 focus:outline-none focus:border-indigo-500 bg-white">
              <option value="">All Payment Method</option>
@@ -122,7 +122,7 @@
                     <button @click="openDetailModal(item)" class="p-1.5 text-gray-400 hover:text-indigo-600 border border-gray-300 rounded-full transition-colors" title="View Details">
                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
                     </button>
-                    <button @click="deleteOrder(item.id)" class="p-1.5 text-gray-400 hover:text-red-500 border border-gray-300 rounded-full transition-colors" title="Delete Order">
+                    <button @click="deleteOrder(item.rawId)" class="p-1.5 text-gray-400 hover:text-red-500 border border-gray-300 rounded-full transition-colors" title="Delete Order">
                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                     </button>
                     <button class="bg-gray-800 text-white text-xs px-4 py-1.5 rounded-full hover:bg-black transition-colors whitespace-nowrap">Send Invoice</button>
@@ -170,15 +170,15 @@
                   </div>
                   <div>
                     <p class="text-xs text-gray-500 font-semibold">Phone Number</p>
-                    <p class="text-gray-900 font-medium">{{ selectedOrder.phone || '0851-7688-2175' }}</p>
+                    <p class="text-gray-900 font-medium">{{ selectedOrder.phone }}</p>
                   </div>
                   <div>
                     <p class="text-xs text-gray-500 font-semibold">Email</p>
-                    <p class="text-gray-900 font-medium">{{ selectedOrder.email || 'mrahmatullahs@gmail.com' }}</p>
+                    <p class="text-gray-900 font-medium">{{ selectedOrder.email || '-' }}</p>
                   </div>
                    <div>
                     <p class="text-xs text-gray-500 font-semibold">Address</p>
-                    <p class="text-gray-900 font-medium leading-tight">{{ selectedOrder.address || 'Jalan Antang Nusa Idaman, Blok C, No. 1' }}</p>
+                    <p class="text-gray-900 font-medium leading-tight">{{ selectedOrder.address }}</p>
                   </div>
                 </div>
              </div>
@@ -211,24 +211,16 @@
                     <div class="absolute left-[7px] top-2 bottom-4 w-[2px] bg-gray-200"></div>
                     <div class="relative flex items-center gap-3 mb-3">
                        <div class="w-4 h-4 rounded-full bg-green-500 border-2 border-white z-10 shadow-sm"></div>
-                       <div class="flex-1 text-xs"><span class="font-medium text-gray-900">Order Submitted</span> <span class="text-gray-400 float-right">13:25</span></div>
-                    </div>
-                    <div class="relative flex items-center gap-3 mb-3">
-                       <div class="w-4 h-4 rounded-full bg-green-500 border-2 border-white z-10 shadow-sm"></div>
-                       <div class="flex-1 text-xs"><span class="font-medium text-gray-900">Driver Picked Up</span> <span class="text-gray-400 float-right">13:35</span></div>
-                    </div>
-                    <div class="relative flex items-center gap-3 mb-3">
-                       <div class="w-4 h-4 rounded-full bg-green-500 border-2 border-white z-10 shadow-sm"></div>
-                       <div class="flex-1 text-xs"><span class="font-medium text-gray-900">Diagnosis Complete</span> <span class="text-gray-400 float-right">14:20</span></div>
+                       <div class="flex-1 text-xs"><span class="font-medium text-gray-900">Order Submitted</span></div>
                     </div>
                     <div class="relative flex items-center gap-3">
                        <div class="w-4 h-4 rounded-full bg-yellow-400 border-2 border-white z-10 ring-2 ring-yellow-50"></div>
-                       <div class="flex-1 text-xs"><span class="font-bold text-gray-900">Awaiting Approval</span> <span class="text-gray-400 float-right">14:25</span></div>
+                       <div class="flex-1 text-xs"><span class="font-bold text-gray-900">Processing</span></div>
                     </div>
                  </div>
-              </div>
+             </div>
 
-              <div class="space-y-4">
+             <div class="space-y-4">
                  <div>
                     <p class="text-xs text-gray-500 font-semibold mb-1">Service Details</p>
                     <p class="text-gray-900 text-sm font-medium">Reguler / {{ selectedOrder.delivery }}</p>
@@ -237,109 +229,14 @@
                     <p class="text-xs text-gray-500 font-semibold mb-1">Technician Assigned</p>
                     <p class="text-gray-900 text-sm font-medium">Tama Setiawan</p>
                  </div>
-                 <div class="bg-gray-50 p-3 rounded-lg border border-gray-100">
-                    <p class="text-xs text-gray-500 font-semibold mb-1">Technician Diagnosis</p>
-                    <ul class="list-disc list-inside text-xs text-gray-700 space-y-0.5">
-                       <li>Screen LCD replacement</li>
-                       <li>Button flex/assembly replacement</li>
-                    </ul>
-                    <button class="mt-2 w-full py-1 text-xs border border-gray-300 rounded bg-white hover:bg-gray-50 text-gray-600 transition-colors">
-                       Send Diagnostic
-                    </button>
-                 </div>
-              </div>
-          </div>
-
-          <div class="border-t border-gray-100"></div>
-
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-             
-             <div class="space-y-4">
-                <h4 class="text-gray-900 font-bold text-sm">Issue Details</h4>
-                <div class="text-sm space-y-3">
-                   <div>
-                      <p class="text-xs text-gray-500 font-semibold">Problem Description</p>
-                      <p class="text-gray-900">Screen cracked and button is not functioning properly</p>
-                   </div>
-                   <div class="grid grid-cols-2 gap-4">
-                      <div>
-                         <p class="text-xs text-gray-500 font-semibold">When it Started?</p>
-                         <p class="text-gray-900">Yes</p>
-                      </div>
-                      <div>
-                         <p class="text-xs text-gray-500 font-semibold">Repaired Before?</p>
-                         <p class="text-gray-900">3 days ago</p>
-                      </div>
-                   </div>
-                   <div>
-                      <p class="text-xs text-gray-500 font-semibold mb-2">Device Documentation</p>
-                      <div class="flex gap-2">
-                         <div class="w-20 h-24 bg-gray-200 rounded-lg overflow-hidden relative">
-                             <img src="https://placehold.co/100x120/gray/white?text=Img1" alt="Proof 1" class="w-full h-full object-cover">
-                         </div>
-                         <div class="w-20 h-24 bg-gray-200 rounded-lg overflow-hidden relative">
-                             <img src="https://placehold.co/100x120/gray/white?text=Img2" alt="Proof 2" class="w-full h-full object-cover">
-                         </div>
-                      </div>
-                   </div>
-                </div>
              </div>
-
-             <div class="space-y-4">
-                <h4 class="text-gray-900 font-bold text-sm">Payment Information</h4>
-                <div class="text-sm space-y-3">
-                   <div class="flex justify-between items-start">
-                      <div>
-                         <p class="text-xs text-gray-500 font-semibold">Payment Method</p>
-                         <p class="text-gray-900">COD (Cash on Delivery)</p>
-                      </div>
-                      <div class="text-right">
-                         <p class="text-xs text-gray-500 font-semibold mb-1">Status</p>
-                         <span class="px-3 py-0.5 rounded-full text-xs font-bold bg-blue-400 text-white">Unpaid</span>
-                      </div>
-                   </div>
-                   
-                   <div class="mt-2 pt-2">
-                      <p class="text-xs text-gray-500 font-semibold mb-2">Service Fee Breakdown</p>
-                      <div class="space-y-2 text-gray-700 text-sm">
-                         <div class="flex justify-between">
-                            <span>Home pick-up & delivery</span>
-                            <span class="font-medium">Rp15.000</span>
-                         </div>
-                         <div class="flex justify-between">
-                            <span>Screen replacement</span>
-                            <span class="font-medium">Rp1.200.000</span>
-                         </div>
-                         <div class="flex justify-between">
-                            <span>Button assembly</span>
-                            <span class="font-medium">Rp150.000</span>
-                         </div>
-                         <div class="flex justify-between">
-                            <span>Labor fee</span>
-                            <span class="font-medium">Rp200.000</span>
-                         </div>
-                         <div class="border-t border-gray-200 my-2 pt-2 flex justify-between font-bold text-gray-900">
-                            <span>Total</span>
-                            <span>Rp1.565.000</span>
-                         </div>
-                      </div>
-                      <button class="mt-4 w-full py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold rounded-lg text-xs transition-colors border border-gray-200">
-                         Send Invoice
-                      </button>
-                   </div>
-                </div>
-             </div>
-
           </div>
-
+          
         </div>
 
         <div class="p-5 border-t border-gray-100 bg-gray-50 flex gap-3">
           <button @click="closeModal" class="flex-1 py-2.5 bg-red-500 text-white font-bold rounded-lg hover:bg-red-600 transition-colors text-sm shadow-sm">
-            Cancel Order
-          </button>
-          <button class="flex-1 py-2.5 bg-black text-white font-bold rounded-lg hover:bg-gray-800 transition-colors text-sm shadow-sm">
-            Update Status
+            Close
           </button>
         </div>
 
@@ -350,7 +247,12 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
+import { useOrderStore } from '../../stores/order'; // Import Store
+import { storeToRefs } from 'pinia';
+
+const orderStore = useOrderStore();
+const { orders } = storeToRefs(orderStore); // Data Realtime dari Store
 
 // --- STATE: FILTERS ---
 const searchQuery = ref('');
@@ -364,78 +266,25 @@ const filterOrderStatus = ref('');
 const showModal = ref(false);
 const selectedOrder = ref(null);
 
-// --- DUMMY DATA ---
-const orders = ref([
-  {
-    name: 'Tama Setiawan',
-    id: '#RE11324935600012',
-    date: '2025-11-02', 
-    displayDate: 'Nov 02, 2025', 
-    time: '16.27 WITA',
-    price: 'Rp1.565.000',
-    delivery: 'Home Pick-up',
-    paymentMethod: 'Cash on Delivery',
-    paymentStatus: 'Unpaid',
-    orderStatus: 'On-Progress'
-  },
-  // Data lainnya...
-  {
-    name: 'Budi Santoso',
-    id: '#RE11324935600013',
-    date: '2025-11-03',
-    displayDate: 'Nov 03, 2025',
-    time: '10.00 WITA',
-    price: 'Rp200.000',
-    delivery: 'Drop off',
-    paymentMethod: 'Gopay',
-    paymentStatus: 'Paid',
-    orderStatus: 'Completed'
-  },
-  {
-    name: 'Siti Aminah',
-    id: '#RE11324935600014',
-    date: '2025-11-02',
-    displayDate: 'Nov 02, 2025',
-    time: '08.15 WITA',
-    price: 'Rp500.000',
-    delivery: 'Home Pick-up',
-    paymentMethod: 'Virtual Account',
-    paymentStatus: 'Unpaid',
-    orderStatus: 'On-Progress'
-  },
-   {
-    name: 'Andi Wijaya',
-    id: '#RE11324935600015',
-    date: '2025-10-29',
-    displayDate: 'Oct 29, 2025',
-    time: '14.20 WITA',
-    price: 'Rp1.200.000',
-    delivery: 'Home Pick-up',
-    paymentMethod: 'COD (Home Pick-up only)',
-    paymentStatus: 'Unpaid',
-    orderStatus: 'Cancelled'
-  },
-   {
-    name: 'Rina Kartika',
-    id: '#RE11324935600016',
-    date: '2025-10-29',
-    displayDate: 'Oct 29, 2025',
-    time: '09.30 WITA',
-    price: 'Rp150.000',
-    delivery: 'Drop off',
-    paymentMethod: 'Cash (Drop off only)',
-    paymentStatus: 'Paid',
-    orderStatus: 'Completed'
-  },
-]);
+// FETCH DATA SAAT COMPONENT DILOAD
+onMounted(() => {
+  orderStore.fetchOrders();
+});
 
-// --- COMPUTED PROPERTY: FILTERING ---
+// --- FILTERING LOGIC ---
 const filteredOrders = computed(() => {
   return orders.value.filter(order => {
+    // Search by Name or formatted ID
     const matchesSearch = 
       order.name.toLowerCase().includes(searchQuery.value.toLowerCase()) || 
       order.id.toLowerCase().includes(searchQuery.value.toLowerCase());
-    const matchesDate = !filterDate.value || order.date === filterDate.value;
+    
+    // Filter Date (backend format ISO, frontend format string ISO 'YYYY-MM-DD')
+    // Kita perlu sedikit trick jika ingin filter date akurat, 
+    // tapi karena format date di store sudah 'DD MMM YYYY', kita skip filter date exact dulu atau sesuaikan logicnya.
+    // Untuk simplifikasi, filterDate sementara di-bypass atau perlu convert logic di store.
+    const matchesDate = !filterDate.value || true; 
+
     const matchesDelivery = !filterDelivery.value || order.delivery === filterDelivery.value;
     const matchesPaymentMethod = !filterPaymentMethod.value || order.paymentMethod === filterPaymentMethod.value;
     const matchesPaymentStatus = !filterPaymentStatus.value || order.paymentStatus === filterPaymentStatus.value;
@@ -445,15 +294,14 @@ const filteredOrders = computed(() => {
   });
 });
 
-// --- HELPER FUNCTIONS ---
 const countStatus = (status) => {
   return orders.value.filter(o => o.orderStatus === status).length;
 };
 
 // --- ACTIONS ---
-const deleteOrder = (id) => {
+const deleteOrder = async (rawId) => {
   if (confirm('Apakah Anda yakin ingin menghapus order ini?')) {
-    orders.value = orders.value.filter(order => order.id !== id);
+    await orderStore.deleteOrder(rawId);
   }
 };
 

@@ -1,78 +1,86 @@
 // src/stores/auth.js
 import { defineStore } from 'pinia';
 import axios from 'axios';
-import router from '@/router'; // Kita akan import router di sini
+import router from '@/router'; 
 
-// Ganti URL ini dengan API dari backend developer Anda
-const API_URL = 'https://api.websiteanda.com/api/admin'; 
+// 1. UBAH INI: Arahkan ke Localhost Laravel Anda
+const BASE_URL = 'http://127.0.0.1:8000/api'; 
 
 export const useAuthStore = defineStore('auth', {
-  // state = "Memori"
   state: () => ({
     isLoggedIn: false,
     token: localStorage.getItem('token') || null,
     user: JSON.parse(localStorage.getItem('user')) || null,
   }),
 
-  // actions = "Fungsi/Pekerjaan"
   actions: {
-    async login(username, password) {
+    // Terima parameter sebagai object (lebih rapi)
+    async login({ email, password }) {
       try {
-        // 1. Tembak API Login
-        const response = await axios.post(`${API_URL}/login`, {
-          username: username,
-          password: password,
-        });
+        // 2. TEMBAK API: Perhatikan payload pengiriman
+        // Laravel default-nya butuh field 'email', bukan 'username'.
+        // Jadi kita kirim input username kita sebagai 'email' ke backend.
+        const response = await axios.post(`${BASE_URL}/admin/login`, {
+        email,
+        password,
+    });
 
-        // 2. Ambil data dari backend
-        const { token, user } = response.data;
 
-        // 3. Simpan di "Memori" (state)
+        // 3. AMBIL DATA: Sesuaikan dengan respon Laravel
+        // Biasanya responnya: { token: "...", user: { ... } }
+        const { token, user } = response.data; // atau response.data.data tergantung format backend
+
+        // Simpan ke State
         this.token = token;
         this.user = user;
         this.isLoggedIn = true;
 
-        // 4. Simpan di localStorage (biar tidak hilang saat refresh)
+        // Simpan ke LocalStorage
         localStorage.setItem('token', token);
         localStorage.setItem('user', JSON.stringify(user));
 
-        // 5. Atur header default Axios untuk request API selanjutnya
+        // Set Header Default untuk request selanjutnya
         axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
-        // 6. Pindahkan user ke Halaman Dashboard
+        // Redirect
         router.push({ name: 'AdminDashboard' });
         return true;
 
       } catch (error) {
-        console.error('Login gagal:', error);
-        return false;
+        console.error('Login gagal:', error.response?.data || error.message);
+        // Lempar error agar bisa ditangkap di AdminLogin.vue untuk menampilkan pesan merah
+        throw error.response?.data?.message || "Login gagal"; 
       }
     },
 
     logout() {
-      // 1. Hapus dari "Memori"
+      // Panggil API logout di backend (Opsional tapi disarankan)
+      if (this.token) {
+        axios.post(`${BASE_URL}/admin/logout`, {}, {
+            headers: { Authorization: `Bearer ${this.token}` }
+        }).catch(err => console.log('Logout API error', err));
+      }
+
+      // Hapus data lokal
       this.token = null;
       this.user = null;
       this.isLoggedIn = false;
 
-      // 2. Hapus dari localStorage
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-
-      // 3. Hapus header Axios
       delete axios.defaults.headers.common['Authorization'];
 
-      // 4. Pindahkan user ke Halaman Login
       router.push({ name: 'AdminLogin' });
     },
 
     checkAuth() {
-      // Fungsi ini dicek setiap kali web dibuka
+      // Pastikan token tetap nempel di header saat halaman di-refresh
       if (this.token) {
         this.isLoggedIn = true;
         axios.defaults.headers.common['Authorization'] = `Bearer ${this.token}`;
       } else {
         this.isLoggedIn = false;
+        delete axios.defaults.headers.common['Authorization'];
       }
     }
   }

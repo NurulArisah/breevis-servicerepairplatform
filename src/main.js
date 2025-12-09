@@ -21,6 +21,9 @@ app.use(pinia)
 import { useAuthStore } from './stores/auth'
 const authStore = useAuthStore()
 authStore.checkAuth()
+if (authStore.token) {
+    axios.defaults.headers.common['Authorization'] = `Bearer ${authStore.token}`
+}
 
 // 3. Gunakan Router
 app.use(router)

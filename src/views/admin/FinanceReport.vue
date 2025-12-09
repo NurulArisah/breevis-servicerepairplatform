@@ -88,6 +88,9 @@
             </tbody>
           </table>
         </div>
+               <button @click="openAddModal('Service Payment')" class="w-6 h-6 flex items-center justify-center rounded border border-gray-200 hover:bg-indigo-50 hover:text-indigo-600 text-gray-500 transition-colors" title="Add Income">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+             </button>
       </div>
       <!-- Right Table -->
       <div class="bg-white rounded-xl shadow-sm p-6 flex flex-col h-full">
@@ -117,6 +120,9 @@
             </tbody>
           </table>
         </div>
+               <button @click="openAddModal('Cash Advance')" class="w-6 h-6 flex items-center justify-center rounded border border-gray-200 hover:bg-indigo-50 hover:text-indigo-600 text-gray-500 transition-colors" title="Add Expense">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+             </button>
       </div>
     </div>
 
@@ -191,10 +197,25 @@
                           <button @click="openDetailModal(item)" class="p-1 text-gray-400 hover:text-indigo-600 border border-gray-200 rounded-full">
                              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                           </button>
-                          
-                          <button v-if="item.status === 'Unpaid'" class="bg-green-500 text-white text-[10px] px-3 py-1 rounded-full hover:bg-green-600 transition-colors font-medium">Confirm</button>
-                          <button v-else class="border border-gray-300 text-gray-400 text-[10px] px-3 py-1 rounded-full cursor-not-allowed font-medium">Confirm</button>
-                          <button class="bg-red-500 text-white text-[10px] px-3 py-1 rounded-full hover:bg-red-600 transition-colors font-medium">Cancel</button>
+                          <button 
+                              v-if="item.status === 'Unpaid'" 
+                              @click="handleUpdateStatus(item, 'Completed')" 
+                              class="bg-green-500 text-white text-[10px] px-3 py-1 rounded-full hover:bg-green-600 transition-colors font-medium">
+                              Confirm
+                           </button>
+                           <button 
+                              v-else 
+                              disabled
+                              class="border border-gray-300 text-gray-400 text-[10px] px-3 py-1 rounded-full cursor-not-allowed font-medium">
+                              {{ item.status === 'Completed' ? 'Done' : 'Void' }}
+                           </button>
+
+                           <button 
+                              v-if="item.status !== 'Cancelled'"
+                              @click="handleUpdateStatus(item, 'Cancelled')" 
+                              class="bg-red-500 text-white text-[10px] px-3 py-1 rounded-full hover:bg-red-600 transition-colors font-medium">
+                              Cancel
+                           </button>
                        </div>
                     </td>
                  </tr>
@@ -212,10 +233,6 @@
               <button class="w-6 h-6 flex items-center justify-center rounded border border-gray-200 hover:bg-gray-50 hover:text-gray-700 text-gray-500 transition-colors">
                   <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
               </button>
-              <button class="flex items-center gap-2 px-3 py-1 bg-white border border-gray-200 rounded-lg text-[10px] font-medium text-gray-600 hover:bg-gray-50">
-                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                 Export as
-              </button>
            </div>
            <div class="flex gap-1">
               <button class="w-6 h-6 flex items-center justify-center rounded hover:bg-gray-100 text-xs text-gray-500">&lt;</button>
@@ -230,12 +247,29 @@
     </div>
 
     <!-- Pagination Footer for Income Tab -->
-    <div v-if="activeTab === 'income_expense'" class="flex justify-end text-[10px] text-gray-400 gap-2">
-       <span>Export as</span>
-       <div class="flex gap-1">
-          <span>&lt;</span> <span class="font-bold text-black">1</span> <span>2</span> <span>3</span> <span>4</span> <span>5</span> <span>&gt;</span>
-       </div>
+    <div class="relative" ref="exportDropdownRef">
+  <button 
+    @click="isExportOpen = !isExportOpen"
+    class="flex items-center gap-2 px-3 py-1 bg-white border border-gray-200 rounded-lg text-[10px] font-medium text-gray-600 hover:bg-gray-50 transition-colors shadow-sm"
+  >
+    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+    Export as
+    <svg class="w-2.5 h-2.5 ml-1 transform transition-transform text-gray-400" :class="{'rotate-180': isExportOpen}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+  </button>
+
+  <div v-if="isExportOpen" class="absolute bottom-full right-0 mb-2 w-32 bg-white border border-gray-100 rounded-xl shadow-xl z-50 overflow-hidden animate-fade-in">
+    <div class="py-1">
+      <button @click="exportToCSV" class="w-full text-left px-4 py-2 text-[10px] text-gray-700 hover:bg-gray-50 hover:text-blue-600 flex items-center gap-2">
+        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+        Export CSV
+      </button>
+      <button @click="exportToPDF" class="w-full text-left px-4 py-2 text-[10px] text-gray-700 hover:bg-gray-50 hover:text-red-600 flex items-center gap-2">
+        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+        Save as PDF
+      </button>
     </div>
+  </div>
+</div>
 
     <!-- MODAL: ADD NEW TRANSACTION -->
     <div v-if="showAddModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm p-4">
@@ -246,297 +280,442 @@
               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
            </button>
         </div>
-        <div class="space-y-4">
-           <div>
-              <label class="block text-xs font-bold text-gray-700 mb-1">Transaction Type</label>
-              <select v-model="newTransForm.type" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                 <option value="" disabled selected>Select transaction type</option>
-                 <option value="Cash Advance">Cash Advance</option>
-                 <option value="Refund">Refund</option>
-              </select>
-           </div>
-           <div v-if="newTransForm.type === 'Cash Advance'" class="space-y-4 animate-fade-in">
-              <div>
-                 <label class="block text-xs font-bold text-gray-700 mb-1">Technician Name</label>
-                 <select class="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                    <option>Find technician</option>
-                    <option>Tama Setiawan</option>
-                    <option>Budi Santoso</option>
-                 </select>
-              </div>
-              <div>
-                 <label class="block text-xs font-bold text-gray-700 mb-1">Bank Name</label>
-                 <input type="text" placeholder="Enter bank name" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
-              </div>
-              <div>
-                 <label class="block text-xs font-bold text-gray-700 mb-1">Account Number</label>
-                 <input type="text" placeholder="Enter account number" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
-              </div>
-              <div>
-                 <label class="block text-xs font-bold text-gray-700 mb-1">Amount</label>
-                 <input type="text" placeholder="Enter amount number" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
-              </div>
-              <div>
-                 <label class="block text-xs font-bold text-gray-700 mb-1">Notes</label>
-                 <input type="text" placeholder="Add notes..." class="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
-              </div>
-           </div>
-           <div v-if="newTransForm.type === 'Refund'" class="space-y-4 animate-fade-in">
-              <div>
-                 <label class="block text-xs font-bold text-gray-700 mb-1">Order ID</label>
-                 <input type="text" placeholder="Enter order ID" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
-              </div>
-              <div>
-                 <label class="block text-xs font-bold text-gray-700 mb-1">Notes</label>
-                 <input type="text" placeholder="Add notes..." class="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
-              </div>
-           </div>
-        </div>
+         <div class="space-y-4">
+         <div>
+            <label class="block text-xs font-bold text-gray-700 mb-1">Transaction Type</label>
+            <select v-model="newTransForm.type" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+               <option value="" disabled selected>Select transaction type</option>
+               <option value="Service Payment">Service Payment</option>
+               <option value="Cash Advance">Cash Advance</option>
+               <option value="Refund">Refund</option>
+            </select>
+         </div>
+
+         <div v-if="newTransForm.type === 'Service Payment'" class="space-y-4 animate-fade-in">
+            <div>
+               <label class="block text-xs font-bold text-gray-700 mb-1">Customer Name</label>
+               <input v-model="newTransForm.name" type="text" placeholder="Enter customer name" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+            <div>
+               <label class="block text-xs font-bold text-gray-700 mb-1">Amount (Rp)</label>
+               <input v-model="newTransForm.amount" type="number" placeholder="Example: 150000" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+            <div>
+               <label class="block text-xs font-bold text-gray-700 mb-1">Notes</label>
+               <input v-model="newTransForm.notes" type="text" placeholder="Service details..." class="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+         </div>
+
+         <div v-if="newTransForm.type === 'Cash Advance'" class="space-y-4 animate-fade-in">
+            <div>
+               <label class="block text-xs font-bold text-gray-700 mb-1">Technician Name</label>
+               <select v-model="newTransForm.name" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                  <option>Tama Setiawan</option>
+                  <option>Budi Santoso</option>
+               </select>
+            </div>
+            <div>
+               <label class="block text-xs font-bold text-gray-700 mb-1">Amount</label>
+               <input v-model="newTransForm.amount" type="number" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+            <div>
+               <label class="block text-xs font-bold text-gray-700 mb-1">Notes</label>
+               <input v-model="newTransForm.notes" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+         </div>
+
+         <div v-if="newTransForm.type === 'Refund'" class="space-y-4 animate-fade-in">
+               <div>
+               <label class="block text-xs font-bold text-gray-700 mb-1">Amount</label>
+               <input v-model="newTransForm.amount" type="number" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+         </div>
+         </div>
         <div class="flex gap-3 mt-8">
            <button @click="closeAddModal" class="flex-1 py-2.5 bg-red-500 text-white text-xs font-bold rounded-xl hover:bg-red-600 transition-colors">Cancel</button>
-           <button class="flex-1 py-2.5 border border-gray-300 bg-white text-gray-700 text-xs font-bold rounded-xl hover:bg-gray-50 transition-colors">Add</button>
+           <button @click="saveNewTransaction" class="flex-1 py-2.5 border border-gray-300 bg-white text-gray-700 text-xs font-bold rounded-xl hover:bg-gray-50 transition-colors">Add</button>
         </div>
       </div>
     </div>
 
     <!-- MODAL: TRANSACTION DETAIL (NEW) -->
-    <div v-if="showDetailModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm p-4">
-      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-fade-in">
-        
-        <!-- Header -->
-        <div class="p-6 border-b border-gray-100 flex justify-between items-start">
-           <div>
-              <div class="flex items-center gap-3">
-                 <h3 class="text-xl font-bold text-gray-900">Transaction <span class="text-gray-400">{{ selectedTransaction?.transId }}</span></h3>
-                 <span class="px-3 py-1 rounded-full text-xs font-bold"
-                       :class="selectedTransaction?.status === 'Unpaid' ? 'bg-blue-100 text-blue-600' : 'bg-green-100 text-green-600'">
-                    {{ selectedTransaction?.status }}
-                 </span>
-              </div>
-              <p class="text-xs text-gray-500 mt-1">Created on {{ selectedTransaction?.date }} at {{ selectedTransaction?.time }}</p>
-           </div>
-           <button @click="closeDetailModal" class="text-gray-400 hover:text-gray-600">
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-           </button>
+<div v-if="showDetailModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-fade-in">
+    
+    <div class="p-6 border-b border-gray-100 flex justify-between items-start">
+      <div>
+        <div class="flex items-center gap-3">
+          <h3 class="text-xl font-bold text-gray-900">Transaction <span class="text-gray-400">{{ selectedTransaction?.transId }}</span></h3>
+          <span class="px-3 py-1 rounded-full text-xs font-bold"
+                :class="selectedTransaction?.status === 'Unpaid' ? 'bg-blue-100 text-blue-600' : 'bg-green-100 text-green-600'">
+             {{ selectedTransaction?.status }}
+          </span>
         </div>
-
-        <!-- Body (Scrollable) -->
-        <div class="p-8 overflow-y-auto custom-scrollbar flex-1">
-           <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
-              
-              <!-- LEFT COLUMN -->
-              <div class="space-y-6">
-                 <!-- Customer Info -->
-                 <div>
-                    <h4 class="text-sm font-bold text-gray-900 mb-3">Costumer Information</h4>
-                    <div class="text-xs space-y-2 text-gray-600">
-                       <div><p class="font-semibold text-gray-400">Name</p><p class="font-medium text-gray-900">{{ selectedTransaction?.name }}</p></div>
-                       <div><p class="font-semibold text-gray-400">Phone Number</p><p class="font-medium text-gray-900">0851-7688-2175</p></div>
-                       <div><p class="font-semibold text-gray-400">Email</p><p class="font-medium text-gray-900">mrahmatullahs@gmail.com</p></div>
-                       <div><p class="font-semibold text-gray-400">Address</p><p class="font-medium text-gray-900">Jalan Antang Nusa Idaman, Blok C, No. 1</p></div>
-                    </div>
-                 </div>
-
-                 <!-- Notes Section (Dynamic) -->
-                 <div class="pt-4 border-t border-gray-100">
-                    <div class="flex justify-between items-center mb-2">
-                       <h4 class="text-sm font-bold text-gray-900">Notes</h4>
-                       <!-- If no note and not editing, show Add Button -->
-                       <button v-if="!selectedTransaction?.notes && !isEditingNote" @click="isEditingNote = true" class="text-gray-400 hover:text-indigo-600">
-                          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                       </button>
-                       <!-- If note exists, show clear/edit (optional, keeping it simple as per request) -->
-                       <button v-if="selectedTransaction?.notes" @click="selectedTransaction.notes = ''; isEditingNote = true" class="text-xs text-red-400 hover:text-red-600">x</button>
-                    </div>
-
-                    <!-- Condition 1: Input Mode -->
-                    <div v-if="isEditingNote" class="animate-fade-in">
-                       <textarea v-model="newNoteText" placeholder="Add notes..." class="w-full border border-gray-300 rounded-lg p-3 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 h-24 resize-none"></textarea>
-                       <div class="flex gap-2 mt-2">
-                          <button @click="saveNote" class="flex-1 bg-black text-white text-xs py-2 rounded-lg font-bold">Done</button>
-                          <button @click="isEditingNote = false" class="flex-1 bg-red-500 text-white text-xs py-2 rounded-lg font-bold">Cancel</button>
-                       </div>
-                    </div>
-
-                    <!-- Condition 2: Display Mode -->
-                    <div v-else-if="selectedTransaction?.notes" class="text-xs text-gray-700 bg-gray-50 p-3 rounded-lg border border-gray-100">
-                       {{ selectedTransaction.notes }}
-                    </div>
-                    
-                    <!-- Condition 3: Empty State (Optional placeholder) -->
-                    <div v-else class="text-xs text-gray-400 italic">No notes added.</div>
-                 </div>
-              </div>
-
-              <!-- RIGHT COLUMN -->
-              <div class="space-y-6">
-                 <!-- Payment Info -->
-                 <div>
-                    <h4 class="text-sm font-bold text-gray-900 mb-3">Payment Information</h4>
-                    <div class="text-xs space-y-2 text-gray-600">
-                       <div class="flex justify-between"><span>Transaction Type</span><span class="font-medium text-gray-900">{{ selectedTransaction?.transType }}</span></div>
-                       <div class="flex justify-between"><span>Payment Method</span><span class="font-medium text-gray-900">{{ selectedTransaction?.paymentType }}</span></div>
-                       <div class="mt-4 pt-2 border-t border-gray-50 space-y-2">
-                          <p class="font-bold text-gray-900 mb-1">Service Fee Breakdown:</p>
-                          <div class="flex justify-between"><span>Home pick-up & delivery</span><span>Rp15.000</span></div>
-                          <div class="flex justify-between"><span>Screen replacement</span><span>Rp1.200.000</span></div>
-                          <div class="flex justify-between"><span>Button assembly replacement</span><span>Rp150.000</span></div>
-                          <div class="flex justify-between"><span>Labor fee</span><span>Rp200.000</span></div>
-                          <div class="flex justify-between font-bold text-gray-900 pt-2 border-t border-gray-100"><span>Total</span><span>{{ selectedTransaction?.amount }}</span></div>
-                       </div>
-                    </div>
-                 </div>
-
-                 <!-- Payment Proof Section (Dynamic) -->
-                 <div class="pt-4 border-t border-gray-100">
-                    <h4 class="text-sm font-bold text-gray-900 mb-3">Payment Proof</h4>
-                    
-                    <!-- Condition 1: Proof Exists (Show Image) -->
-                    <div v-if="selectedTransaction?.proof" class="relative group">
-                       <img :src="selectedTransaction.proof" alt="Receipt" class="w-full h-32 object-cover rounded-lg border border-gray-200">
-                       <!-- Hover to remove (Simulated) -->
-                       <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer">
-                          <span class="text-white text-xs font-bold bg-black px-2 py-1 rounded">View</span>
-                       </div>
-                    </div>
-
-                    <!-- Condition 2: No Proof (Show Upload Box) -->
-                    <div v-else @click="triggerFileInput" class="border-2 border-dashed border-gray-300 rounded-xl p-6 flex flex-col items-center justify-center text-center hover:bg-gray-50 transition-colors cursor-pointer">
-                       <!-- Hidden File Input -->
-                       <input type="file" ref="fileInput" class="hidden" accept="image/png, image/jpeg, application/pdf" @change="handleFileSelect">
-                       
-                       <svg class="w-8 h-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
-                       <p class="text-xs font-bold text-gray-700">Select your file or drag and drop</p>
-                       <p class="text-[10px] text-gray-400 mt-1">png, pdf, jpg, mov accepted</p>
-                       <button class="mt-3 px-4 py-1.5 bg-white border border-gray-300 rounded-lg text-xs font-bold text-gray-700 hover:bg-gray-100">Browse File</button>
-                    </div>
-                 </div>
-              </div>
-
-           </div>
-        </div>
-
-        <!-- Footer Buttons -->
-        <div class="p-6 border-t border-gray-100 bg-gray-50 flex gap-4">
-           <button class="flex-1 py-3 bg-red-500 text-white text-xs font-bold rounded-xl hover:bg-red-600 transition-colors">
-              Cancel Order
-           </button>
-           <button class="flex-1 py-3 border border-gray-300 bg-white text-gray-700 text-xs font-bold rounded-xl hover:bg-gray-50 transition-colors">
-              Send Invoice
-           </button>
-           <button class="flex-1 py-3 bg-black text-white text-xs font-bold rounded-xl hover:bg-gray-800 transition-colors">
-              Update Status
-           </button>
-        </div>
-
+        <p class="text-xs text-gray-500 mt-1">Created on {{ selectedTransaction?.date }} at {{ selectedTransaction?.time }}</p>
+      </div>
+      
+      <div class="flex gap-2">
+        <button v-if="!isEditingDetail" @click="startEditDetail" class="text-gray-400 hover:text-indigo-600 transition-colors p-1" title="Edit Transaction">
+           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+        </button>
+        <button @click="closeDetailModal" class="text-gray-400 hover:text-gray-600 transition-colors p-1">
+           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
       </div>
     </div>
+
+    <div class="p-8 overflow-y-auto custom-scrollbar flex-1">
+       <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
+          
+          <div class="space-y-6">
+             <div>
+                <h4 class="text-sm font-bold text-gray-900 mb-3">Customer Information</h4>
+                <div class="text-xs space-y-2 text-gray-600">
+                   <div><p class="font-semibold text-gray-400">Name</p><p class="font-medium text-gray-900">{{ selectedTransaction?.name }}</p></div>
+                   </div>
+             </div>
+
+             <div class="pt-4 border-t border-gray-100">
+                <h4 class="text-sm font-bold text-gray-900 mb-2">Notes</h4>
+                
+                <div v-if="isEditingDetail">
+                   <textarea v-model="editForm.notes" class="w-full border border-gray-300 rounded-lg p-3 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 h-24 resize-none" placeholder="Edit notes..."></textarea>
+                </div>
+                
+                <div v-else>
+                   <div v-if="selectedTransaction?.notes" class="text-xs text-gray-700 bg-gray-50 p-3 rounded-lg border border-gray-100">{{ selectedTransaction.notes }}</div>
+                   <div v-else class="text-xs text-gray-400 italic">No notes added.</div>
+                </div>
+             </div>
+          </div>
+
+          <div class="space-y-6">
+             <div>
+                <h4 class="text-sm font-bold text-gray-900 mb-3">Payment Information</h4>
+                <div class="text-xs space-y-3 text-gray-600">
+                   
+                   <div class="flex justify-between items-center h-8">
+                      <span>Transaction Type</span>
+                      <span v-if="!isEditingDetail" class="font-medium text-gray-900">{{ selectedTransaction?.transType }}</span>
+                      <select v-else v-model="editForm.transType" class="border rounded px-2 py-1 text-xs focus:outline-none focus:border-indigo-500 w-1/2">
+                         <option>Service Payment</option>
+                         <option>Cash Advance</option>
+                         <option>Refund</option>
+                      </select>
+                   </div>
+
+                   <div class="flex justify-between items-center h-8">
+                      <span>Payment Method</span>
+                      <span v-if="!isEditingDetail" class="font-medium text-gray-900">{{ selectedTransaction?.paymentType }}</span>
+                      <select v-else v-model="editForm.paymentType" class="border rounded px-2 py-1 text-xs focus:outline-none focus:border-indigo-500 w-1/2">
+                         <option>Cash on Delivery</option>
+                         <option>Bank Transfer</option>
+                         <option>Gopay</option>
+                         <option>Cash</option>
+                      </select>
+                   </div>
+
+                   <div class="flex justify-between items-center h-8 font-bold text-gray-900 pt-2 border-t border-gray-100 mt-2">
+                      <span>Total Amount</span>
+                      <span v-if="!isEditingDetail">{{ selectedTransaction?.amount }}</span>
+                      <input v-else v-model="editForm.amount" type="text" class="border rounded px-2 py-1 text-xs text-right focus:outline-none focus:border-indigo-500 w-1/2" placeholder="Rp...">
+                   </div>
+                </div>
+             </div>
+
+             <div class="pt-4 border-t border-gray-100">
+                <div class="flex justify-between items-center mb-3">
+                   <h4 class="text-sm font-bold text-gray-900">Payment Proof</h4>
+                   <button v-if="isEditingDetail" @click="triggerFileInput" class="text-[10px] text-indigo-600 font-bold hover:underline">Change File</button>
+                </div>
+
+                <div v-if="selectedTransaction?.proof" class="relative group">
+                   <img :src="isEditingDetail ? (editForm.proof || selectedTransaction.proof) : selectedTransaction.proof" alt="Receipt" class="w-full h-32 object-cover rounded-lg border border-gray-200">
+                </div>
+                <div v-else class="text-xs text-gray-400 italic bg-gray-50 p-4 rounded text-center border border-dashed">No proof uploaded.</div>
+                
+                <input type="file" ref="fileInput" class="hidden" accept="image/*" @change="(e) => { 
+                   const file = e.target.files[0]; 
+                   if(file) editForm.proof = URL.createObjectURL(file); 
+                }">
+             </div>
+          </div>
+
+       </div>
+    </div>
+
+    <div class="p-6 border-t border-gray-100 bg-gray-50 flex gap-4">
+       
+       <template v-if="isEditingDetail">
+          <button @click="cancelEditDetail" class="flex-1 py-3 bg-white border border-gray-300 text-gray-700 text-xs font-bold rounded-xl hover:bg-gray-50 transition-colors">
+             Cancel Edit
+          </button>
+          <button @click="saveEditDetail" class="flex-1 py-3 bg-indigo-600 text-white text-xs font-bold rounded-xl hover:bg-indigo-700 transition-colors shadow-lg">
+             Save Changes
+          </button>
+       </template>
+
+       <template v-else>
+          <button @click="handleUpdateStatus(selectedTransaction, 'Cancelled')" class="flex-1 py-3 bg-red-500 text-white text-xs font-bold rounded-xl hover:bg-red-600 transition-colors">
+             Cancel Order
+          </button>
+          <button @click="alert('Invoice Sent!')" class="flex-1 py-3 border border-gray-300 bg-white text-gray-700 text-xs font-bold rounded-xl hover:bg-gray-50 transition-colors">
+             Send Invoice
+          </button>
+          <button @click="handleUpdateStatus(selectedTransaction, 'Completed')" class="flex-1 py-3 bg-black text-white text-xs font-bold rounded-xl hover:bg-gray-800 transition-colors">
+             Mark as Completed
+          </button>
+       </template>
+
+    </div>
+
+  </div>
+</div>
 
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
+import { useFinanceStore } from '../../stores/finance'; // Import Store
+import { storeToRefs } from 'pinia';
+import axios from 'axios'; // Pastikan axios diimport untuk POST data
+
+const BASE_URL = 'http://127.0.0.1:8000/api/admin'; 
+
+// --- STORE SETUP ---
+const financeStore = useFinanceStore();
+// Ambil data reaktif dari store
+const { transactions, incomeList, expenseList, summary } = storeToRefs(financeStore);
 
 const activeTab = ref('income_expense'); 
 
-// --- ADD MODAL LOGIC ---
-const showAddModal = ref(false);
-const newTransForm = ref({
-  type: '', 
-  technician: '',
-  bank: '',
-  account: '',
-  amount: '',
-  orderId: '',
-  notes: ''
+// Fetch Data saat halaman dibuka
+onMounted(() => {
+  financeStore.fetchFinance();
+  document.addEventListener('click', closeExportDropdown); // Listener click luar
 });
 
-const openAddModal = () => {
-  newTransForm.value.type = ''; 
+onUnmounted(() => {
+  document.removeEventListener('click', closeExportDropdown);
+});
+
+// Mapping Data Store ke Variabel Template
+const transactionData = transactions; // Untuk Tab Transaction Log
+const incomeData = incomeList;        // Untuk Tab Income
+const expenseData = expenseList;      // Untuk Tab Expense
+
+// Format Summary untuk Kartu Atas
+const formatRp = (val) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val);
+
+
+// =======================================================================
+// 1. MODAL ADD TRANSACTION (LOGIKA BARU UNTUK BUTTON +)
+// =======================================================================
+const showAddModal = ref(false);
+const newTransForm = ref({ type: '', amount: '', notes: '', name: '' });
+
+// Fungsi buka modal (bisa dipanggil dari tombol + di header tabel)
+const openAddModal = (prefillType = '') => {
+  newTransForm.value = { 
+      type: prefillType, // Otomatis terisi jika klik tombol + Income/Expense
+      amount: '', 
+      notes: '',
+      name: '' 
+  };
   showAddModal.value = true;
 };
 
-const closeAddModal = () => {
-  showAddModal.value = false;
+const closeAddModal = () => showAddModal.value = false;
+
+// Fungsi Simpan Data ke Database
+const saveNewTransaction = async () => {
+  // 1. Validasi
+  if(!newTransForm.value.type || !newTransForm.value.amount) {
+    alert("Mohon isi Tipe Transaksi dan Jumlah Uang!");
+    return;
+  }
+
+  const token = localStorage.getItem('token'); // Sesuaikan nama key jika beda, misal 'auth_token'
+  
+  if (!token) {
+      alert("Sesi habis. Silakan login ulang.");
+      // Opsional: redirect ke login
+      return;
+  }
+
+  // 2. Tentukan Income/Expense (sesuai kolom transaction_category di Model)
+  let categoryDB = 'expense'; 
+  if (['Service Payment', 'Income'].includes(newTransForm.value.type)) {
+      categoryDB = 'income';
+  }
+
+  // 3. PERSIAPKAN PAYLOAD (KUNCI UTAMA)
+  // Nama properti di sini (kiri) HARUS cocok dengan $request di Controller
+  const payload = {
+      // Data untuk logika backend (mencari transaction_type_id)
+      type_name: newTransForm.value.type, // Kirim string "Service Payment", "Cash Advance", dll
+
+      // Data untuk disimpan langsung ke tabel transactions
+      transaction_category: categoryDB,     // 'income' atau 'expense'
+      amount: parseFloat(newTransForm.value.amount),
+      payment_method: 'Cash',               // Default
+      notes: newTransForm.value.notes || '-', 
+      transaction_date: new Date().toISOString().split('T')[0], // YYYY-MM-DD
+      
+      // Kirim nama customer/teknisi sebagai data tambahan (nanti dihandle controller)
+      related_name: newTransForm.value.name 
+  };
+
+  console.log("Payload dikirim:", payload); // Cek di Console Browser
+
+  try {
+    const response = await axios.post(`${BASE_URL}/transactions`, payload);
+    
+    if(response.status === 200 || response.status === 201) {
+        await financeStore.fetchFinance();
+        closeAddModal();
+        // Reset form
+        newTransForm.value = { type: '', amount: '', notes: '', name: '' };
+        alert("Transaksi berhasil disimpan!");
+    }
+  } catch (error) {
+    console.error("Error Backend:", error.response);
+    alert("Gagal menyimpan: " + (error.response?.data?.message || error.message));
+  }
 };
 
-// --- DETAIL MODAL LOGIC ---
+
+// =======================================================================
+// 2. EXPORT LOGIC (CSV & PDF)
+// =======================================================================
+const isExportOpen = ref(false);
+const exportDropdownRef = ref(null);
+
+// Tutup dropdown saat klik di luar
+const closeExportDropdown = (e) => {
+  if (exportDropdownRef.value && !exportDropdownRef.value.contains(e.target)) {
+    isExportOpen.value = false;
+  }
+};
+
+// Fungsi Export CSV
+const exportToCSV = () => {
+  const headers = ['Transaction ID', 'Name', 'Type', 'Category', 'Payment Method', 'Amount', 'Date', 'Status'];
+  
+  const rows = transactionData.value.map(item => [
+    item.transId,
+    `"${item.name}"`, 
+    item.type,
+    item.transType,
+    item.paymentType,
+    `"${item.amount}"`,
+    item.date,
+    item.status
+  ]);
+
+  const csvContent = [
+    headers.join(','), 
+    ...rows.map(e => e.join(','))
+  ].join('\n');
+
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  
+  link.setAttribute('href', url);
+  link.setAttribute('download', `Transaction_Report_${new Date().toISOString().slice(0,10)}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  
+  isExportOpen.value = false; 
+};
+
+// Fungsi Export PDF (Print)
+const exportToPDF = () => {
+  isExportOpen.value = false;
+  window.print();
+};
+
+
+// =======================================================================
+// 3. UPDATE STATUS LOGIC (CONFIRM / CANCEL)
+// =======================================================================
+const handleUpdateStatus = async (item, status) => {
+  if (!item || !item.originalId) return;
+
+  const confirmMsg = status === 'Cancelled' 
+    ? 'Are you sure you want to CANCEL this transaction?' 
+    : 'Mark this transaction as COMPLETED?';
+
+  if (confirm(confirmMsg)) {
+    const success = await financeStore.updateStatus(item.originalId, status);
+    if (success) {
+      if (showDetailModal.value) {
+        closeDetailModal();
+      }
+    }
+  }
+};
+
+
+// =======================================================================
+// 4. DETAIL MODAL LOGIC (EDIT & VIEW)
+// =======================================================================
 const showDetailModal = ref(false);
 const selectedTransaction = ref(null);
-const isEditingNote = ref(false);
-const newNoteText = ref('');
+const isEditingDetail = ref(false); 
+const editForm = ref({}); 
 const fileInput = ref(null);
-
-// Mock Images for Proof
 const mockReceiptUrl = 'https://placehold.co/300x150/e2e8f0/475569?text=Receipt+Image';
 
+// Buka Modal
 const openDetailModal = (item) => {
-  // Populate detail data (Mocking fetch details)
-  selectedTransaction.value = {
-    ...item,
-    // Logic: If status completed -> show note & proof. Else -> empty.
-    notes: item.status === 'Completed' ? 'Initial funds for Mr. Tama Setiawan' : '',
-    proof: item.status === 'Completed' ? mockReceiptUrl : null 
-  };
-  isEditingNote.value = false;
-  newNoteText.value = '';
+  selectedTransaction.value = { ...item };
+  isEditingDetail.value = false; 
   showDetailModal.value = true;
 };
 
+// Tutup Modal
 const closeDetailModal = () => {
   showDetailModal.value = false;
   selectedTransaction.value = null;
+  isEditingDetail.value = false;
 };
 
-const saveNote = () => {
-  if (selectedTransaction.value) {
-    selectedTransaction.value.notes = newNoteText.value;
-  }
-  isEditingNote.value = false;
+// Mulai Edit
+const startEditDetail = () => {
+  editForm.value = { ...selectedTransaction.value };
+  isEditingDetail.value = true;
 };
 
-// --- FILE UPLOAD LOGIC ---
-const triggerFileInput = () => {
-  if (fileInput.value) {
-    fileInput.value.click();
-  }
+// Batal Edit
+const cancelEditDetail = () => {
+  isEditingDetail.value = false;
+  editForm.value = {};
 };
 
+// Simpan Edit (Sementara Lokal)
+const saveEditDetail = async () => {
+  Object.assign(selectedTransaction.value, editForm.value);
+  
+  // Update di list utama agar reaktif
+  const idx = transactionData.value.findIndex(t => t.transId === editForm.value.transId);
+  if(idx !== -1) transactionData.value[idx] = { ...editForm.value };
+
+  isEditingDetail.value = false;
+  alert('Transaction updated locally!');
+};
+
+// File Upload Logic
+const triggerFileInput = () => { if (fileInput.value) fileInput.value.click(); };
 const handleFileSelect = (event) => {
   const file = event.target.files[0];
-  if (file && selectedTransaction.value) {
-    // Create local URL for preview
-    const imageUrl = URL.createObjectURL(file);
-    selectedTransaction.value.proof = imageUrl;
+  if (file && isEditingDetail.value) {
+     editForm.value.proof = URL.createObjectURL(file); 
   }
 };
-
-// Dummy Data
-const incomeData = ref([
-  { name: 'Tama Setiawan', type: 'Service Payment', date: '25/11/2025', time: '13.15 WITA', amount: '+Rp1.565.000' },
-  { name: 'Tama Setiawan', type: 'Service Payment', date: '25/11/2025', time: '16.27 WITA', amount: '+Rp1.565.000' },
-  { name: 'Tama Setiawan', type: 'Service Payment', date: '25/11/2025', time: '10.30 WITA', amount: '+Rp1.565.000' },
-  { name: 'Tama Setiawan', type: 'Service Payment', date: '25/11/2025', time: '08.33 WITA', amount: '+Rp1.565.000' },
-  { name: 'Tama Setiawan', type: 'Service Payment', date: '25/11/2025', time: '13.15 WITA', amount: '+Rp1.565.000' },
-]);
-
-const expenseData = ref([
-  { name: 'Tama Setiawan', type: 'Service Payment', date: 'Nov 05, 2025', time: '13.15 WITA', amount: '-Rp1.565.000' },
-  { name: 'Tama Setiawan', type: 'Service Payment', date: 'Nov 02, 2025', time: '16.27 WITA', amount: '-Rp1.565.000' },
-  { name: 'Tama Setiawan', type: 'Service Payment', date: 'Nov 02, 2025', time: '10.30 WITA', amount: '-Rp1.565.000' },
-  { name: 'Tama Setiawan', type: 'Service Payment', date: 'Nov 02, 2025', time: '08.33 WITA', amount: '-Rp1.565.000' },
-  { name: 'Tama Setiawan', type: 'Service Payment', date: 'Oct 29, 2025', time: '13.15 WITA', amount: '-Rp1.565.000' },
-]);
-
-const transactionData = ref([
-  { transId: '#P002328766628', name: 'Tama Setiawan', subId: '#RE11324935600012', transType: 'Service Payment', paymentType: 'Cash on Delivery', amount: '+Rp1.565.000', date: 'Nov 02, 2025', time: '16.27 WITA', status: 'Unpaid', type: 'income' },
-  { transId: '#0030728276351', name: '-', subId: '', transType: 'Cash Advance', paymentType: 'Bank Transfer', amount: '-Rp1.565.000', date: 'Nov 02, 2025', time: '16.27 WITA', status: 'Completed', type: 'expense' },
-  { transId: '#P002328766628', name: 'Tama Setiawan', subId: '#RE11324935600012', transType: 'Service Payment', paymentType: 'Cash on Delivery', amount: '+Rp1.565.000', date: 'Nov 02, 2025', time: '16.27 WITA', status: 'Unpaid', type: 'income' },
-  { transId: '#0030728276351', name: '-', subId: '', transType: 'Cash Advance', paymentType: 'Bank Transfer', amount: '-Rp1.565.000', date: 'Nov 02, 2025', time: '16.27 WITA', status: 'Completed', type: 'expense' },
-  { transId: '#P002328766628', name: 'Tama Setiawan', subId: '#RE11324935600012', transType: 'Service Payment', paymentType: 'Cash on Delivery', amount: '+Rp1.565.000', date: 'Nov 02, 2025', time: '16.27 WITA', status: 'Unpaid', type: 'income' },
-]);
-
 </script>
 
 <style scoped>
@@ -557,5 +736,34 @@ const transactionData = ref([
 .custom-scrollbar::-webkit-scrollbar-thumb {
   background: #e5e7eb; 
   border-radius: 10px;
+}
+
+@media print {
+  /* Sembunyikan elemen yang tidak perlu saat PDF */
+  button, nav, .filters, .sidebar, header {
+    display: none !important;
+  }
+  
+  /* Pastikan Tabel terlihat jelas */
+  table {
+    width: 100%;
+    border: 1px solid #ddd;
+  }
+  
+  th, td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    font-size: 10px;
+  }
+
+  /* Judul Laporan */
+  body::before {
+    content: "Breevis - Transaction Report";
+    font-size: 18px;
+    font-weight: bold;
+    display: block;
+    margin-bottom: 20px;
+    text-align: center;
+  }
 }
 </style>

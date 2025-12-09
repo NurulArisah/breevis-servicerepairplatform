@@ -6,23 +6,19 @@ use Illuminate\Support\Facades\Schema;
 
 class CreateTransactionTypeTable extends Migration
 {
-    /**
-     * Run the migrations.
-     *
-     * @return void
-     */
     public function up(): void
     {
-        //
+        // Tabel ini menyimpan master data: "Service Payment", "Cash Advance", dll
+        Schema::create('transaction_type', function (Blueprint $table) {
+            // Kita pakai nama ID khusus sesuai Model temanmu
+            $table->id('transaction_type_id'); 
+            $table->string('transaction_type_name');
+            $table->timestamps();
+        });
     }
 
-    /**
-     * Reverse the migrations.
-     *
-     * @return void
-     */
     public function down(): void
     {
-        //
+        Schema::dropIfExists('transaction_type');
     }
 }

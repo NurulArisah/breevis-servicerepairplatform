@@ -460,12 +460,32 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue';
+import { ref, reactive, onMounted, } from 'vue';
 import { useRouter } from 'vue-router';
+import axios from 'axios';
 
 const router = useRouter();
 const showModal = ref(false);
 const fileName = ref('');
+// VARIABLE UNTUK FILE ASLI
+const fileData = ref(null);
+
+// State untuk menyimpan data referensi dari DB
+const deviceTypes = ref([]);
+const serviceTypes = ref([]);
+
+// Fetch data saat component dimuat
+onMounted(async () => {
+  try {
+    const responseDevices = await axios.get('/api/device-types');
+    deviceTypes.value = responseDevices.data;
+    
+    const responseServices = await axios.get('/api/service-types');
+    serviceTypes.value = responseServices.data;
+  } catch (error) {
+    console.error(error);
+  }
+});
 
 const form = reactive({
   name: '',
@@ -510,7 +530,10 @@ const errors = reactive({
 
 const handleFileUpload = (event) => {
   const file = event.target.files[0];
-  if (file) fileName.value = file.name;
+  if (file) {
+    fileName.value = file.name;
+    fileData.value = file; // Simpan object file asli
+  }
 };
 
 const clearForm = () => {
@@ -567,9 +590,50 @@ const validateAndSubmit = () => {
   showModal.value = true;
 };
 
-const finishOrder = () => {
+
+const finishOrder = async () => {
   showModal.value = false;
-  router.push('/receipt'); // Redirect ke halaman RECEIPT
+
+  // 1. Bungkus data ke FormData
+  let formData = new FormData();
+  
+  // Append semua text field
+  formData.append('customer_name', form.name);
+  formData.append('customer_phone', form.phone);
+  formData.append('customer_email', form.email);
+  formData.append('device_type', form.deviceType);
+  formData.append('device_brand', form.brand);
+  formData.append('device_model', form.model);
+  formData.append('serial_number', form.serialNumber);
+  formData.append('problem_description', form.problemDesc);
+  formData.append('issue_started', form.issueStart);
+  formData.append('previous_repair', form.previousRepair);
+  formData.append('additional_notes', form.notes);
+  formData.append('service_type', form.serviceType);
+  formData.append('delivery_method', form.delivery);
+  formData.append('pickup_address', form.pickupAddress);
+  formData.append('pickup_city', form.pickupCity);
+  formData.append('payment_method', form.payment);
+
+  // Append File jika ada
+  if (fileData.value) {
+    formData.append('file_upload', fileData.value);
+  }
+
+  try {
+    // 2. Kirim ke API Laravel
+    const response = await axios.post('http://localhost:8000/api/orders', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+
+    // 3. Ambil ID dari response dan Redirect ke halaman Receipt dinamis
+    const newOrderId = response.data.order_id;
+    router.push(`/receipt/${newOrderId}`); 
+    
+  } catch (error) {
+    console.error("Gagal submit order:", error);
+    alert("Terjadi kesalahan saat membuat pesanan.");
+  }
 };
 </script>
 

@@ -3,91 +3,75 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Services\LogActivityService;
 use Illuminate\Http\Request;
 use App\Models\LogActivity;
-use Illuminate\Support\Facades\Hash;
+use App\Models\Admin;
+// use App\Models\User; // Jika ada model User/Customer
 
 class LogController extends Controller
 {
-    /**
-     * [GET] Endpoint untuk menampilkan Daftar Log Activities.
-     * Mendukung filter role, status, dan search.
-     */
     public function index(Request $request)
     {
-        // 1. Inisiasi Query Dasar dengan eager loading relasi 'actor'
-        $query = LogActivity::with('actor')
-                            ->orderBy('created_at', 'desc');
+        // 1. Query Dasar
+        $query = LogActivity::orderBy('created_at', 'desc');
 
-        // 2. Terapkan Filter
+        // 2. Filter Role
         $query->when($request->filled('role'), function ($q) use ($request) {
             $q->where('actor_role', $request->input('role'));
         });
         
+        // 3. Filter Status
         $query->when($request->filled('status'), function ($q) use ($request) {
             $q->where('status', $request->input('status'));
         });
 
-        // 3. Terapkan Search pada Aksi atau Deskripsi
+        // 4. Search (Action atau Deskripsi)
         $query->when($request->filled('search'), function ($q) use ($request) {
             $searchTerm = '%' . $request->input('search') . '%';
-            $q->where('action', 'LIKE', $searchTerm)
-              ->orWhere('description', 'LIKE', $searchTerm);
+            $q->where(function($sub) use ($searchTerm) {
+                $sub->where('action', 'LIKE', $searchTerm)
+                    ->orWhere('description', 'LIKE', $searchTerm);
+            });
         });
 
-        // 4. Ambil data dengan pagination
-        $logs = $query->paginate(50); // Sesuaikan angka 50 dengan kebutuhan Anda
+        // 5. Ambil Pagination
+        $logs = $query->paginate(50);
+
+        // 6. TRANSFORMASI DATA (PENTING UNTUK FRONTEND)
+        // Kita ubah format data agar ada 'actionType' (untuk ikon) dan nama Actor yang jelas
+        $logs->getCollection()->transform(function ($log) {
+            
+            // Logic menentukan Ikon berdasarkan nama Action
+            $actionType = 'info';
+            $act = strtolower($log->action);
+            if (str_contains($act, 'delete') || str_contains($act, 'remove')) $actionType = 'delete';
+            elseif (str_contains($act, 'update') || str_contains($act, 'edit') || str_contains($act, 'change')) $actionType = 'edit';
+            elseif (str_contains($act, 'upload') || str_contains($act, 'submit') || str_contains($act, 'create')) $actionType = 'upload';
+            elseif (str_contains($act, 'download') || str_contains($act, 'export')) $actionType = 'download';
+            elseif (str_contains($act, 'login')) $actionType = 'login';
+
+            // Logic mencari Nama Actor (Manual Lookup sederhana)
+            $actorName = $log->actor_role; // Default
+            if ($log->actor_role === 'Admin' && $log->actor_id) {
+                $admin = Admin::find($log->actor_id);
+                if ($admin) $actorName = $admin->name;
+            }
+            // Tambahkan else if untuk Customer jika perlu
+
+            return [
+                'id' => $log->id,
+                'timestamp' => $log->created_at->format('Y-m-d H:i:s'),
+                'actor' => $actorName, 
+                'role' => $log->actor_role,
+                'ip' => $log->ip_address ?? '-',
+                'device' => $log->device_info ?? '-',
+                'action' => $log->action,
+                'actionType' => $actionType, // <--- Ini yang dipakai Frontend buat Icon
+                'desc' => $log->description,
+                'status' => $log->status ?? 'Info'
+            ];
+        });
         
-        // 5. Respon API
         return response()->json($logs);
-    }
-}
-
-class AuthController extends Controller
-{
-    protected $logService; // Deklarasi
-
-    public function __construct() // Perlu diupdate jika belum ada injection
-    {
-        // Inisialisasi Log Service
-        $this->logService = new LogActivityService(); 
-        // Atau gunakan Dependency Injection jika Anda sudah mengaturnya di AppServiceProvider
-    }
-
-    // ... (di dalam method updateProfile)
-    public function updateProfile(Request $request)
-    {
-        // ... (Logika Validasi dan Update)
-        
-        $user->fill($validatedData);
-        $user->save();
-
-        // >>> BARU: CATAT LOG AKSI <<<
-        $this->logService->log(
-            'Profile Updated', 
-            'Admin ' . $user->email . ' memperbarui data profil.', 
-            'Info'
-        );
-
-        return response()->json(['message' => 'Profile berhasil diperbarui.'], 200);
-    }
-    
-    // ... (di dalam method changePassword)
-    public function changePassword(Request $request)
-    {
-        // ... (Logika Validasi dan Update Password)
-        
-        $user->password = Hash::make($request->new_password);
-        $user->save();
-
-        // >>> BARU: CATAT LOG AKSI KRITIS <<<
-        $this->logService->log(
-            'Password Changed', 
-            'Password Admin ' . $user->email . ' berhasil diubah.', 
-            'Critical' // Aksi ini bersifat kritis
-        );
-        
-        // ...
     }
 }

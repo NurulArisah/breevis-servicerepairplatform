@@ -270,22 +270,18 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
+import { useStaffStore } from '../../stores/staff'; // Import Store
+import { storeToRefs } from 'pinia';
 
-// Dummy Data Staff
-const staffList = ref([
-  { id: 1, name: 'Tama Setiawan', role: 'Technician', date: 'Nov 02, 2025', status: 'On Task', salary: 'Rp1.565.000', address: 'Perumahan Antang Nusa Idaman Blok C, No. 1', email: 'lonelymintt@gmail.com', phone: '+62 895-3356-45015' },
-  { id: 2, name: 'Budi Santoso', role: 'Technician', date: 'Nov 02, 2025', status: 'Off Task', salary: 'Rp1.565.000', address: 'Jalan Merdeka No. 45, Jakarta Pusat', email: 'budi.santoso@gmail.com', phone: '+62 812-3456-7890' },
-  { id: 3, name: 'Siti Aminah', role: 'Admin', date: 'Nov 02, 2025', status: 'On Task', salary: 'Rp1.565.000', address: 'Komplek Melati Indah, Blok A2', email: 'siti.aminah@yahoo.com', phone: '+62 811-2233-4455' },
-  { id: 4, name: 'Agus Wijaya', role: 'Technician', date: 'Nov 02, 2025', status: 'On Task', salary: 'Rp1.565.000', address: 'Jl. Ahmad Yani No. 12', email: 'agus.wijaya@gmail.com', phone: '+62 856-7788-9900' },
-  { id: 5, name: 'Rina Kartika', role: 'Finance', date: 'Nov 02, 2025', status: 'On Task', salary: 'Rp1.565.000', address: 'Apartemen City View, Lt 15', email: 'rina.kartika@gmail.com', phone: '+62 813-9988-7766' }
-]);
+const staffStore = useStaffStore();
+const { staffList, loading } = storeToRefs(staffStore); // Ambil data reaktif
 
 // --- STATES ---
-const selectedStaff = ref(staffList.value[0]);
+const selectedStaff = ref(null);
 const isEditing = ref(false);
-const isAdding = ref(false); // State baru untuk Mode Add
-const isLoading = ref(false); // State untuk loading refresh
+const isAdding = ref(false);
+const isLoading = ref(false); // Loading UI manual (jika perlu)
 
 // Form Models
 const editForm = ref({});
@@ -295,9 +291,17 @@ const newStaffForm = ref({
   email: '',
   phone: '',
   salary: '',
-  role: 'Technician', // Default role
-  status: 'Off Task', // Default status
-  date: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
+  role: 'Technician',
+  status: 'Off Task',
+  date_joined: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
+});
+
+// FETCH DATA SAAT LOAD
+onMounted(async () => {
+    await staffStore.fetchStaff();
+    if (staffList.value.length > 0) {
+        selectedStaff.value = staffList.value[0];
+    }
 });
 
 // --- FUNCTIONS ---
@@ -310,12 +314,7 @@ const selectStaff = (staff) => {
 
 // 2. Refresh List
 const refreshList = () => {
-  isLoading.value = true;
-  setTimeout(() => {
-    isLoading.value = false;
-    // Di sini nanti bisa tambahkan logika fetch API ulang
-    // Untuk dummy, kita cuma simulasi loading saja
-  }, 1000); 
+  staffStore.fetchStaff();
 };
 
 // 3. Edit Mode Functions
@@ -332,6 +331,8 @@ const cancelEdit = () => {
 };
 
 const saveEdit = () => {
+  // Logic update ke API bisa ditambahkan di sini nanti
+  // Sementara update lokal dulu
   const index = staffList.value.findIndex(s => s.id === selectedStaff.value.id);
   if (index !== -1) {
     staffList.value[index] = { ...editForm.value };
@@ -340,16 +341,15 @@ const saveEdit = () => {
   isEditing.value = false;
 };
 
-// Toggle Status Edit
 const toggleEditStatus = () => {
   editForm.value.status = editForm.value.status === 'On Task' ? 'Off Task' : 'On Task';
 };
 
-// 4. ADD MODE FUNCTIONS (NEW)
+// 4. ADD MODE FUNCTIONS
 const startAdd = () => {
   isEditing.value = false;
   isAdding.value = true;
-  selectedStaff.value = null; // Hide detail view
+  selectedStaff.value = null;
   
   // Reset Form
   newStaffForm.value = {
@@ -360,7 +360,7 @@ const startAdd = () => {
     salary: '',
     role: 'Technician',
     status: 'Off Task',
-    date: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
+    date_joined: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
   };
 };
 
@@ -369,27 +369,28 @@ const cancelAdd = () => {
   selectedStaff.value = staffList.value[0];
 };
 
-const saveNewStaff = () => {
+const saveNewStaff = async () => {
   if (!newStaffForm.value.name) {
     alert("Name is required!");
     return;
   }
-  const newId = staffList.value.length + 1;
-  const newStaff = { id: newId, ...newStaffForm.value };
-  staffList.value.push(newStaff);
-  isAdding.value = false;
-  selectedStaff.value = newStaff;
+  
+  // Panggil Action Store untuk kirim ke API
+  const success = await staffStore.addStaff(newStaffForm.value);
+  
+  if (success) {
+      isAdding.value = false;
+      // Auto select yang baru (logic sederhana, select pertama aja)
+      if (staffList.value.length > 0) selectedStaff.value = staffList.value[staffList.value.length - 1];
+  }
 };
 
 const deleteStaff = (id) => {
   if (confirm("Are you sure?")) {
-    staffList.value = staffList.value.filter(s => s.id !== id);
-    if (selectedStaff.value && selectedStaff.value.id === id) {
-      selectedStaff.value = staffList.value[0] || null;
-    }
+     // Panggil API delete nanti di sini
+     // staffStore.deleteStaff(id);
   }
 };
-
 </script>
 
 <style scoped>

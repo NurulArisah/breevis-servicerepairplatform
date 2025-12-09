@@ -13,9 +13,10 @@ class AuthController extends Controller
 {
     protected $logService;
 
-    public function __construct(LogActivityService $logService)
+    public function __construct(LogActivityService $service)
     {
-        $this->logService = $logService;
+        // Dependency Injection otomatis
+        $this->logService = $service;
     }
 
     /**

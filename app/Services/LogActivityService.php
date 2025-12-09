@@ -2,39 +2,44 @@
 
 namespace App\Services;
 
-use App\Models\LogActivity; // Model yang akan digunakan
-use Illuminate\Support\Facades\Request; 
-// Import model lain yang Anda butuhkan di Service Layer
+use App\Models\LogActivity;
+use Illuminate\Support\Facades\Request;
 
 class LogActivityService
 {
     /**
-     * Mencatat aktivitas ke tabel log_activities.
+     * Catat aktivitas ke database
+     *
+     * @param string $action Judul aksi (misal: 'Login Success')
+     * @param string $description Detail aksi
+     * @param string $status (Success, Warning, Critical, Info)
+     * @param mixed $relatedModel Model terkait (opsional)
      */
-    public function log(string $action, string $description, string $status = 'Info', int $relatedId = null, string $actorRole = null): void
+    public function log($action, $description, $status = 'Info', $relatedModel = null)
     {
-        // 1. Tentukan Actor ID dan Role (Logika yang kita bahas)
-        $user = auth()->user();
+        // Tentukan siapa yang login (Admin atau null)
+        $user = auth()->user(); 
         
-        $actorId = $user ? $user->id : null; 
-        
-        if ($actorRole) {
-            $role = $actorRole;
-            $actorId = null; 
-        } else {
-            $role = $user ? ($user->role ?? 'Admin') : 'System';
+        // Deteksi Role
+        $role = 'System';
+        if ($user) {
+            // Cek apakah dia instansi dari model Admin
+            if ($user instanceof \App\Models\Admin) {
+                $role = 'Admin';
+            } else {
+                $role = 'Customer';
+            }
         }
 
-        // 2. Buat Log (WRITE)
         LogActivity::create([
-            'actor_id' => $actorId,
+            'actor_id' => $user ? $user->id : null, // ID Admin/User
             'actor_role' => $role,
             'action' => $action,
             'description' => $description,
             'status' => $status,
             'ip_address' => Request::ip(),
-            'device_info' => Request::header('User-Agent'), 
-            'related_id' => $relatedId,
+            'device_info' => Request::header('User-Agent'),
+            'related_id' => $relatedModel ? $relatedModel->id : null
         ]);
     }
 }

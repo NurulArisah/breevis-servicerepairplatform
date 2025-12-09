@@ -136,10 +136,29 @@
        <div class="flex items-center gap-4">
           <span class="text-[10px] text-gray-400">Shows {{ logs.length }} results of 150</span>
           
-          <button class="flex items-center gap-2 px-3 py-1 bg-white border border-gray-200 rounded-lg text-[10px] font-medium text-gray-600 hover:bg-gray-50 transition-colors shadow-sm">
-             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-             Export as
-          </button>
+          <div class="relative" ref="exportDropdownRef">
+  <button 
+    @click="isExportOpen = !isExportOpen"
+    class="flex items-center gap-2 px-3 py-1 bg-white border border-gray-200 rounded-lg text-[10px] font-medium text-gray-600 hover:bg-gray-50 transition-colors shadow-sm"
+  >
+    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+    Export as
+    <svg class="w-2.5 h-2.5 ml-1 transform transition-transform text-gray-400" :class="{'rotate-180': isExportOpen}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+  </button>
+
+  <div v-if="isExportOpen" class="absolute bottom-full right-0 mb-2 w-32 bg-white border border-gray-100 rounded-xl shadow-xl z-50 overflow-hidden animate-fade-in">
+    <div class="py-1">
+      <button @click="exportToCSV" class="w-full text-left px-4 py-2 text-[10px] text-gray-700 hover:bg-gray-50 hover:text-blue-600 flex items-center gap-2">
+        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+        Export CSV
+      </button>
+      <button @click="exportToPDF" class="w-full text-left px-4 py-2 text-[10px] text-gray-700 hover:bg-gray-50 hover:text-red-600 flex items-center gap-2">
+        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+        Save as PDF
+      </button>
+    </div>
+  </div>
+</div>
        </div>
        
        <div class="flex gap-1">
@@ -158,10 +177,14 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue';
+import axios from 'axios';
+
+// Ganti URL sesuai backend Anda
+const BASE_URL = 'http://127.0.0.1:8000/api/admin'; 
 
 // --- FILTER STATE ---
 const isStatusOpen = ref(false);
-const selectedStatuses = ref(['Success', 'Warning']); 
+const selectedStatuses = ref([]); 
 const statusOptions = [
   { label: 'Succeed', value: 'Success' },
   { label: 'Info', value: 'Info' },
@@ -176,135 +199,126 @@ const closeDropdown = (e) => {
     isStatusOpen.value = false;
   }
 };
-onMounted(() => document.addEventListener('click', closeDropdown));
-onUnmounted(() => document.removeEventListener('click', closeDropdown));
 
-// --- DUMMY DATA ---
-const logs = ref([
-  { 
-    timestamp: '2025-11-07 14:45:23', 
-    actor: 'Risah', 
-    role: 'Admin', 
-    ip: '192.168.0.12', 
-    device: 'Windows 11 / Chrome', 
-    action: 'Download Report', 
-    actionType: 'download',
-    desc: 'Exported monthly report (October 2025)', 
-    status: 'Success' 
-  },
-  { 
-    timestamp: '2025-11-07 14:30:00', 
-    actor: 'System', 
-    role: '-', 
-    ip: '-', 
-    device: '-', 
-    action: 'Auto Update', 
-    actionType: 'refresh',
-    desc: 'Automatically generated invoice for #RE11324935600012', 
-    status: 'Info' 
-  },
-  { 
-    timestamp: '2025-11-07 14:27:50', 
-    actor: 'session_9a2c', 
-    role: 'Customer', 
-    ip: '36.72.85.110', 
-    device: 'Android / Chrome', 
-    action: 'Submit Order', 
-    actionType: 'upload',
-    desc: 'Submitted new repair request for Realme 5i - Screen & Button Issue', 
-    status: 'Success' 
-  },
-  { 
-    timestamp: '2025-11-07 14:24:50', 
-    actor: 'session_9a2c', 
-    role: 'Customer', 
-    ip: '36.72.85.110', 
-    device: 'Android / Chrome', 
-    action: 'Upload File', 
-    actionType: 'upload',
-    desc: 'Uploaded photo my_phone_gw.jpg for order', 
-    status: 'Info' 
-  },
-  { 
-    timestamp: '2025-11-07 12:15:23', 
-    actor: 'Risah', 
-    role: 'Admin', 
-    ip: '192.168.0.12', 
-    device: 'Windows 11 / Chrome', 
-    action: 'Delete Order', 
-    actionType: 'delete',
-    desc: 'Deleted order #RE4561123700015 (duplicate entry)', 
-    status: 'Critical' 
-  },
-  { 
-    timestamp: '2025-11-06 15:05:44', 
-    actor: 'Risah', 
-    role: 'Admin', 
-    ip: '192.168.0.12', 
-    device: 'Windows 11 / Chrome', 
-    action: 'Edit Staff Wages', 
-    actionType: 'edit',
-    desc: 'Change #TC12889 wages: Rp800.000 -> Rp950.000', 
-    status: 'Warning' 
-  },
-  { 
-    timestamp: '2025-11-07 14:45:23', 
-    actor: 'Risah', 
-    role: 'Admin', 
-    ip: '192.168.0.12', 
-    device: 'Windows 11 / Chrome', 
-    action: 'Download Report', 
-    actionType: 'download',
-    desc: 'Exported monthly report (October 2025)', 
-    status: 'Success' 
-  },
-  { 
-    timestamp: '2025-11-07 14:45:23', 
-    actor: 'Risah', 
-    role: 'Admin', 
-    ip: '192.168.0.12', 
-    device: 'Windows 11 / Chrome', 
-    action: 'Download Report', 
-    actionType: 'download',
-    desc: 'Exported monthly report (October 2025)', 
-    status: 'Success' 
-  },
-  { 
-    timestamp: '2025-11-07 14:45:23', 
-    actor: 'Risah', 
-    role: 'Admin', 
-    ip: '192.168.0.12', 
-    device: 'Windows 11 / Chrome', 
-    action: 'Download Report', 
-    actionType: 'download',
-    desc: 'Exported monthly report (October 2025)', 
-    status: 'Success' 
-  },
-  { 
-    timestamp: '2025-11-07 14:45:23', 
-    actor: 'Risah', 
-    role: 'Admin', 
-    ip: '192.168.0.12', 
-    device: 'Windows 11 / Chrome', 
-    action: 'Download Report', 
-    actionType: 'download',
-    desc: 'Exported monthly report (October 2025)', 
-    status: 'Success' 
-  },
-]);
+// --- STATE EXPORT ---
+const isExportOpen = ref(false);
+const exportDropdownRef = ref(null);
 
-// Helper for Icons (Returning SVG Strings)
+// Tutup dropdown export saat klik di luar
+const closeExportDropdown = (e) => {
+  if (exportDropdownRef.value && !exportDropdownRef.value.contains(e.target)) {
+    isExportOpen.value = false;
+  }
+};
+
+// Update onMounted & onUnmounted untuk handle click outside export juga
+onMounted(() => {
+  fetchLogs();
+  // ... interval existing ...
+  document.addEventListener('click', closeDropdown); // Status dropdown existing
+  document.addEventListener('click', closeExportDropdown); // Export dropdown NEW
+});
+
+onUnmounted(() => {
+  // ... clear interval existing ...
+  document.removeEventListener('click', closeDropdown);
+  document.removeEventListener('click', closeExportDropdown);
+});
+
+// --- FUNGSI 1: EXPORT CSV ---
+const exportToCSV = () => {
+  // 1. Header Khusus Log
+  const headers = ['Timestamp', 'Actor', 'Role', 'IP Address', 'Device', 'Action', 'Description', 'Status'];
+  
+  // 2. Mapping Data Log
+  const rows = logs.value.map(log => [
+    log.timestamp,
+    `"${log.actor}"`, 
+    log.role,
+    log.ip,
+    `"${log.device}"`,
+    log.action,
+    `"${log.desc}"`, // Kutip agar aman jika ada koma
+    log.status
+  ]);
+
+  // 3. Gabung jadi String
+  const csvContent = [
+    headers.join(','), 
+    ...rows.map(e => e.join(','))
+  ].join('\n');
+
+  // 4. Download File
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  
+  link.setAttribute('href', url);
+  link.setAttribute('download', `Activity_Logs_${new Date().toISOString().slice(0,10)}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  
+  isExportOpen.value = false;
+};
+
+// --- FUNGSI 2: EXPORT PDF (Print Browser) ---
+const exportToPDF = () => {
+  isExportOpen.value = false;
+  window.print();
+};
+
+// --- DATA LOGS (REAL INTEGRATION) ---
+const logs = ref([]);
+const isLoading = ref(false);
+
+// Fungsi Fetch Data dari API
+const fetchLogs = async () => {
+  // Hanya tampilkan loading spinner jika data masih kosong (awal load)
+  // Supaya saat auto-refresh user tidak terganggu loading
+  if (logs.value.length === 0) isLoading.value = true;
+  
+  try {
+    const response = await axios.get(`${BASE_URL}/logs`);
+    // Simpan data dari backend ke state
+    logs.value = response.data.data; 
+  } catch (error) {
+    console.error("Gagal ambil logs:", error);
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+// --- LIFECYCLE: REALTIME POLLING ---
+let pollingInterval;
+
+onMounted(() => {
+  fetchLogs(); // Ambil data pertama kali
+  
+  // REALTIME SIMULATION: Ambil data setiap 5 detik
+  pollingInterval = setInterval(fetchLogs, 5000); 
+  
+  document.addEventListener('click', closeDropdown);
+});
+
+onUnmounted(() => {
+  // Matikan interval saat pindah halaman biar hemat memori
+  clearInterval(pollingInterval);
+  document.removeEventListener('click', closeDropdown);
+});
+
+// Helper for Icons (Sudah Cocok dengan Controller)
 const getActionIcon = (type) => {
   const icons = {
     download: `<svg class="w-3.5 h-3.5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>`,
     refresh: `<svg class="w-3.5 h-3.5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>`,
     upload: `<svg class="w-3.5 h-3.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>`,
     delete: `<svg class="w-3.5 h-3.5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>`,
-    edit: `<svg class="w-3.5 h-3.5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>`
+    edit: `<svg class="w-3.5 h-3.5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>`,
+    login: `<svg class="w-3.5 h-3.5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path></svg>`
   };
-  return icons[type] || icons['download'];
+  return icons[type] || icons['info']; // Default ke info jika tipe tidak dikenal
 };
-
 </script>
 
 <style scoped>
@@ -325,5 +339,50 @@ const getActionIcon = (type) => {
 }
 .animate-fade-in {
   animation: fadeIn 0.2s ease-out forwards;
+}
+
+@media print {
+  /* Sembunyikan elemen pengganggu */
+  button, 
+  input, 
+  select,
+  .p-6.border-b, /* Header Toolbar */
+  .p-4.border-t  /* Footer Pagination */
+  {
+    display: none !important;
+  }
+
+  /* Pastikan tabel tercetak penuh */
+  .h-full, .overflow-hidden {
+    height: auto !important;
+    overflow: visible !important;
+  }
+  
+  .overflow-x-auto {
+    overflow: visible !important;
+  }
+
+  /* Style tabel cetak */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 10px;
+  }
+  
+  th, td {
+    border: 1px solid #ddd;
+    padding: 6px;
+    color: black !important;
+  }
+
+  /* Judul Halaman Cetak */
+  body::before {
+    content: "System Activity Logs";
+    display: block;
+    text-align: center;
+    font-weight: bold;
+    font-size: 16px;
+    margin-bottom: 20px;
+  }
 }
 </style>

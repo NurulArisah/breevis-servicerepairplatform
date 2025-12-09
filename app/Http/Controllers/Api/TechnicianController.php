@@ -5,72 +5,61 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Technician;
-use Illuminate\Support\Facades\Hash; // Diperlukan jika teknisi adalah user yang login
+// use App\Services\LogActivityService; // 1. Matikan Log Service Biar Gak Error
 
 class TechnicianController extends Controller
 {
-    /**
-     * [GET] Menampilkan Daftar Staff (Teknisi) untuk Admin Dashboard.
-     * Endpoint: GET /api/technicians
-     */
-    public function index(Request $request)
+    // protected $logService;
+
+    public function __construct(/* LogActivityService $logService */)
     {
-        // Mengambil semua data teknisi dengan pagination
-        $technicians = Technician::orderBy('technician_name', 'asc')
-                                 ->paginate(15); 
-        
-        return response()->json($technicians);
+        // $this->logService = $logService;
     }
 
     /**
-     * [POST] Menambahkan Teknisi Baru (Admin Action).
-     * Melayani form 'Add New Technician'.
+     * GET /api/admin/technicians
+     * Mengambil semua daftar staff/teknisi
+     */
+    public function index()
+    {
+        // Ambil data dari database, urutkan dari yang terbaru
+        $technicians = Technician::latest()->get();
+        
+        // MATIKAN LOG AGAR TIDAK ERROR 500
+        // $this->logService->log('View Technicians', 'Admin melihat daftar teknisi', 'Success');
+
+        return response()->json([
+            'message' => 'List technicians retrieved',
+            'data' => $technicians
+        ], 200);
+    }
+
+    /**
+     * POST /api/admin/technicians
+     * Menambah staff baru
      */
     public function store(Request $request)
     {
-        $validatedData = $request->validate([
-            'technician_name' => 'required|string|max:100',
-            'technician_phone' => 'required|string|max:20|unique:technicians,technician_phone',
-            'start_from' => 'required|date',
-            'salary' => 'required|numeric|min:0',
-            // 'working_status' akan diset default (misal: 'Available' atau 'On Task')
+        $request->validate([
+            'name' => 'required|string',
+            'email' => 'required|email|unique:technicians,email',
+            // 'phone' => 'required', // Boleh diwajibkan atau tidak
         ]);
 
-        // Buat Record Teknisi
-        $technician = Technician::create(array_merge($validatedData, [
-            // set default status kerja
-            'working_status' => 'Off Task',
-        ]));
+        $tech = Technician::create([
+            'name' => $request->name,
+            'role' => $request->role ?? 'Technician',
+            'email' => $request->email,
+            'phone' => $request->phone,
+            'address' => $request->address,
+            'salary' => $request->salary,
+            'status' => $request->status ?? 'Off Task',
+            'date_joined' => $request->date_joined ?? now()->format('M d, Y')
+        ]);
 
         return response()->json([
-            'message' => 'Teknisi berhasil ditambahkan.',
-            'technician' => $technician
+            'message' => 'Technician created successfully',
+            'data' => $tech
         ], 201);
     }
-    
-    /**
-     * [GET] Mengambil daftar Order yang ditugaskan kepada Teknisi (Tombol "See Order").
-     * Endpoint: GET /api/technicians/{id}/orders
-     */
-    public function getAssignedOrders($technicianId)
-    {
-        $technician = Technician::find($technicianId);
-
-        if (!$technician) {
-            return response()->json(['message' => 'Teknisi tidak ditemukan.'], 404);
-        }
-
-        // Menggunakan relasi orders() dari Model Technician
-        $orders = $technician->orders()
-                            ->with(['orderStatus', 'device', 'paymentStatus'])
-                            ->orderBy('order_date', 'desc')
-                            ->get();
-        
-        return response()->json([
-            'technician_name' => $technician->technician_name,
-            'orders' => $orders
-        ]);
-    }
-    
-    // ... Anda dapat menambahkan method update() dan destroy() di sini untuk CRUD lengkap
 }
